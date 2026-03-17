@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smolov Jr. Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent:#e8ff00;
+  --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#222;
+  --text:#f0f0f0;--muted:#555;--card:#161616;
+  --red:#ff4d00;--purple:#b47cff;--green:#00ff9d;--orange:#ff9d00;--pink:#ff4d8b;--cyan:#00e5ff;
+}
+[data-theme="light"]{
+  --bg:#f4f4f4;--surface:#fff;--surface2:#e8e8e8;--border:#ddd;
+  --text:#111;--muted:#888;--card:#fafafa;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;transition:background .3s,color .3s;}
+
+/* ── TOP BAR ── */
+.topbar{display:flex;align-items:center;gap:8px;padding:12px 16px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:200;flex-wrap:wrap;}
+.athlete-tabs{display:flex;gap:6px;flex-wrap:wrap;flex:1;}
+.athlete-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;
+  font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer;
+  border:2px solid var(--border);background:transparent;color:var(--muted);transition:.2s;}
+.athlete-chip.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,.08);}
+.athlete-chip .chip-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+.athlete-chip .chip-del{font-size:14px;opacity:.4;margin-left:2px;line-height:1;}
+.athlete-chip .chip-del:hover{opacity:1;color:var(--red);}
+.add-btn{width:32px;height:32px;border-radius:50%;border:2px dashed var(--muted);
+  background:transparent;color:var(--muted);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:.2s;}
+.add-btn:hover{border-color:var(--text);color:var(--text);}
+.topbar-right{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.theme-toggle{background:transparent;border:1px solid var(--border);border-radius:20px;
+  padding:5px 10px;font-size:11px;color:var(--muted);cursor:pointer;transition:.2s;}
+.theme-toggle:hover{border-color:var(--text);color:var(--text);}
+.sync-status{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.err{background:var(--red);}
+.sync-dot.loading{background:var(--orange);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ── NAV ── */
+nav{display:flex;gap:3px;padding:10px 16px 0;flex-wrap:wrap;}
+.tab{padding:7px 13px;border-radius:4px 4px 0 0;font-size:10px;font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;
+  background:var(--surface);color:var(--muted);
+  border:1px solid var(--border);border-bottom:none;transition:.2s;}
+.tab.active{background:var(--surface2);color:var(--accent);border-color:var(--accent);}
+.tab:hover:not(.active){color:var(--text);}
+
+main{padding:16px;max-width:960px;margin:0 auto;}
+.page{display:none;}.page.active{display:block;}
+
+/* ── HERO ── */
+.hero{padding:24px 0 16px;}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,7vw,68px);line-height:.9;}
+.hero h1 span{color:var(--accent);}
+.hero p{color:var(--muted);font-size:12px;margin-top:6px;letter-spacing:1px;}
+
+/* ── STAT CARDS ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:14px 0;}
+.stat-card{background:var(--surface);border-radius:4px;padding:12px;border-left:3px solid var(--accent);}
+.stat-card .label{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.stat-card .value{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--text);margin-top:3px;}
+.stat-card .sub{font-size:9px;color:var(--accent);margin-top:1px;}
+
+/* ── PROG BAR ── */
+.prog-bar-wrap{margin-bottom:12px;}
+.prog-bar-label{display:flex;justify-content:space-between;margin-bottom:4px;font-size:10px;}
+.prog-bar-label span:first-child{color:var(--muted);letter-spacing:1px;}
+.prog-bar-label span:last-child{color:var(--accent);font-weight:600;}
+.prog-bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.prog-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .6s;}
+
+/* ── SCHEDULE ── */
+.schedule-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:10px;}
+.sched-card{background:var(--surface);border-radius:4px;padding:12px;border-top:2px solid var(--accent);}
+.sched-week{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.sched-title{font-family:'Bebas Neue',sans-serif;font-size:17px;margin-top:3px;}
+.sched-items{margin-top:5px;font-size:10px;color:var(--muted);line-height:1.8;}
+
+/* ── DAY CARDS ── */
+.day-card{background:var(--surface);border-radius:6px;overflow:hidden;margin-bottom:8px;}
+.day-header{display:flex;justify-content:space-between;align-items:center;
+  padding:11px 16px;background:var(--surface2);cursor:pointer;user-select:none;}
+.day-header h3{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;}
+.badge{font-size:8px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  padding:3px 7px;border-radius:2px;}
+.day-body{padding:12px 16px;display:none;}
+.day-body.open{display:block;}
+
+/* ── SMOLOV BOX ── */
+.smolov-box{background:rgba(232,255,0,.04);border:1px solid rgba(232,255,0,.12);
+  border-radius:4px;padding:12px;margin-bottom:12px;}
+.smolov-title{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--accent);margin-bottom:8px;}
+.input-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;align-items:center;}
+.input-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  text-align:center;margin-bottom:2px;}
+.target-pill{background:rgba(232,255,0,.1);border:1px solid rgba(232,255,0,.2);
+  color:var(--accent);border-radius:3px;padding:5px 6px;font-size:11px;font-weight:600;text-align:center;}
+input[type=number],input[type=text],input[type=password]{
+  background:var(--bg);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);padding:6px 7px;font-size:12px;width:100%;
+  font-family:'DM Sans',sans-serif;text-align:center;transition:.2s;}
+input:focus{outline:none;border-color:var(--accent);}
+.e1rm-pill{background:var(--bg);border:1px solid var(--border);border-radius:3px;
+  padding:6px 7px;font-size:11px;color:var(--accent);font-weight:600;
+  text-align:center;min-height:32px;display:flex;align-items:center;justify-content:center;}
+
+/* ── ACCESSORIES ── */
+.acc-header{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 70px;gap:6px;
+  font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:5px;margin-top:12px;}
+.acc-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 70px;gap:6px;
+  align-items:center;margin-bottom:6px;}
+.ex-name{font-size:12px;font-weight:500;}
+
+/* ── VOLUME BOX ── */
+.volume-box{background:var(--surface2);border-radius:4px;padding:10px 14px;
+  margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.volume-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.volume-value{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent);}
+.volume-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* ── SAVE ── */
+.save-btn{margin-top:12px;background:var(--accent);color:#000;border:none;
+  padding:8px 20px;border-radius:4px;font-weight:700;font-size:10px;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;}
+.save-btn:hover{opacity:.85;}
+.save-msg{font-size:10px;color:var(--green);margin-left:8px;opacity:0;transition:.4s;}
+.save-msg.show{opacity:1;}
+
+/* ── COLOUR PICKER ── */
+.colour-section{margin-top:20px;background:var(--surface);border-radius:6px;padding:16px;}
+.colour-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--accent);margin-bottom:10px;}
+.colour-swatches{display:flex;gap:8px;flex-wrap:wrap;}
+.swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.2s;}
+.swatch.active{border-color:var(--text);transform:scale(1.15);}
+.colour-custom{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.colour-custom label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.colour-custom input[type=color]{width:36px;height:36px;border:none;border-radius:50%;
+  cursor:pointer;background:none;padding:0;}
+
+/* ── PR TABLE ── */
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;
+  color:var(--accent);margin:18px 0 3px;}
+.pr-table{width:100%;border-collapse:collapse;margin-top:10px;}
+.pr-table th{background:var(--surface2);color:var(--accent);font-size:8px;
+  letter-spacing:2px;text-transform:uppercase;padding:8px 10px;
+  text-align:center;border:1px solid var(--border);}
+.pr-table td{padding:8px 10px;border:1px solid var(--border);text-align:center;
+  font-size:12px;background:var(--surface);}
+
+/* ── NOTE CARDS ── */
+.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:12px;}
+.note-card{background:var(--surface);border-radius:4px;padding:14px;border-left:3px solid var(--red);}
+.note-card.green{border-left-color:var(--green);}
+.note-card.accent{border-left-color:var(--accent);}
+.note-card.purple{border-left-color:var(--purple);}
+.note-card h4{font-family:'Bebas Neue',sans-serif;font-size:14px;margin-bottom:5px;}
+.note-card p{font-size:11px;color:var(--muted);line-height:1.7;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);
+  display:flex;align-items:center;justify-content:center;z-index:1000;display:none;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:8px;padding:28px;
+  width:min(380px,90vw);border:1px solid var(--border);}
+.modal h2{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent);margin-bottom:16px;}
+.modal label{font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--muted);display:block;margin-bottom:5px;margin-top:12px;}
+.modal input{text-align:left;padding:9px 12px;}
+.modal-btns{display:flex;gap:8px;margin-top:20px;}
+.modal-btn{flex:1;padding:10px;border-radius:4px;font-size:11px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:none;transition:.2s;}
+.modal-btn.primary{background:var(--accent);color:#000;}
+.modal-btn.secondary{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.modal-btn:hover{opacity:.85;}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:.2s;}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.pin-key{padding:12px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);
+  font-size:16px;font-weight:600;cursor:pointer;text-align:center;transition:.2s;color:var(--text);}
+.pin-key:hover{background:var(--border);}
+.pin-key.del{color:var(--red);}
+.pin-error{color:var(--red);font-size:11px;text-align:center;margin-top:6px;min-height:16px;}
+.pin-locked-msg{display:flex;align-items:center;gap:8px;background:rgba(255,77,0,.08);
+  border:1px solid rgba(255,77,0,.2);border-radius:4px;padding:10px 14px;margin-bottom:12px;}
+.pin-locked-msg span{font-size:11px;color:var(--red);}
+
+/* ── TARGET EDIT ── */
+.target-edit-wrap{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.target-edit-wrap label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.target-edit-wrap input{width:80px;font-family:'Bebas Neue',sans-serif;font-size:18px;
+  color:var(--accent);text-align:center;border-color:var(--accent);}
+
+@media(max-width:500px){
+  .acc-row,.acc-header{grid-template-columns:1fr 1fr;}
+  .ex-name{grid-column:1/-1;}
+  .input-grid-5{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-add-athlete">
+  <div class="modal">
+    <h2>Add Athlete</h2>
+    <label>Name</label>
+    <input type="text" id="new-athlete-name" placeholder="e.g. Alex" maxlength="20">
+    <label>Current Bench PR (kg)</label>
+    <input type="number" id="new-athlete-pr" step="0.5" placeholder="e.g. 80">
+    <label>Accent Colour</label>
+    <div class="colour-swatches" id="new-athlete-swatches" style="margin-top:6px"></div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeModal('modal-add-athlete')">Cancel</button>
+      <button class="modal-btn primary" onclick="confirmAddAthlete()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-delete-athlete">
+  <div class="modal">
+    <h2>Delete Athlete</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px"
+       id="delete-confirm-text">This will permanently delete all data for this athlete.</p>
+    <div id="delete-pin-area"></div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeModal('modal-delete-athlete')">Cancel</button>
+      <button class="modal-btn primary" style="background:var(--red)"
+              id="delete-confirm-btn" onclick="confirmDeleteAthlete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pin">
+  <div class="modal">
+    <h2 id="pin-modal-title">Enter PIN</h2>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:8px" id="pin-modal-sub"></p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`
+        <button class="pin-key${k==='⌫'?' del':''}" onclick="pinKey('${k}')">${k}</button>
+      `).join('')}
+    </div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="modal-btn secondary" onclick="closePinModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="athlete-tabs" id="athlete-tabs"></div>
+  <button class="add-btn" onclick="openAddAthlete()" title="Add athlete">+</button>
+  <div class="topbar-right">
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">☀️ Light</button>
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">—</span>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="tab active" onclick="showPage('dashboard',event)">Dashboard</div>
+  <div class="tab" onclick="showPage('week1',event)">Week 1</div>
+  <div class="tab" onclick="showPage('week2',event)">Week 2</div>
+  <div class="tab" onclick="showPage('week3',event)">Week 3</div>
+  <div class="tab" onclick="showPage('deload',event)">Deload & PR</div>
+  <div class="tab" onclick="showPage('tracker',event)">PR Tracker</div>
+</nav>
+
+<main>
+  <div id="page-dashboard" class="page active"></div>
+  <div id="page-week1" class="page"></div>
+  <div id="page-week2" class="page"></div>
+  <div id="page-week3" class="page"></div>
+  <div id="page-deload" class="page"></div>
+  <div id="page-tracker" class="page"></div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL = "https://sorzrdphywjzyrgelgvs.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kDrH6TN4OHnOoyf1zufX7g_KagChtzn";
+
+const PRESET_COLOURS = [
+  "#e8ff00","#00e5ff","#ff4d00","#b47cff","#00ff9d",
+  "#ff9d00","#ff4d8b","#ffffff","#60a5fa","#f472b6"
+];
+
+const DEFAULT_ATHLETES = [
+  { id:"josh", name:"Josh", pr:65,  colour:"#e8ff00" },
+  { id:"ross", name:"Ross", pr:90,  colour:"#00e5ff" },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let athletes    = [];
+let currentId   = "";
+let db          = {};
+let saveTimer   = null;
+let pinSessions = {}; // { athleteId: expiryTimestamp }
+let pendingPinAction = null;
+let pinBuffer   = "";
+let newAthleteColour = PRESET_COLOURS[0];
+
+// ═══════════════════════════════════════════════════════════
+//  SUPABASE
+// ═══════════════════════════════════════════════════════════
+function setSyncStatus(state,text){
+  document.getElementById("sync-dot").className = "sync-dot "+state;
+  document.getElementById("sync-text").textContent = text;
+}
+
+async function dbFetch(id){
+  setSyncStatus("loading","syncing…");
+  try{
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/workouts?athlete=eq.${encodeURIComponent(id)}&select=data`,
+      {headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}
+    );
+    if(!r.ok) throw new Error(r.status);
+    const rows = await r.json();
+    db[id] = rows.length ? rows[0].data : {};
+    setSyncStatus("ok","synced");
+  }catch{
+    setSyncStatus("err","offline");
+    db[id] = db[id]||{};
+  }
+  return db[id];
+}
+
+async function dbSave(id){
+  setSyncStatus("loading","saving…");
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/workouts`,{
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,
+        "Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({id,athlete:id,data:db[id],updated_at:new Date().toISOString()})
+    });
+    if(!r.ok) throw new Error(r.status);
+    setSyncStatus("ok","saved ✓");
+  }catch{setSyncStatus("err","save failed");}
+}
+
+async function saveAthletesMeta(){
+  // store athlete list in a special "meta" row
+  setSyncStatus("loading","saving…");
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/workouts`,{
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,
+        "Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
+      body:JSON.stringify({id:"__meta__",athlete:"__meta__",
+        data:{athletes},updated_at:new Date().toISOString()})
+    });
+    setSyncStatus("ok","saved ✓");
+  }catch{setSyncStatus("err","save failed");}
+}
+
+async function loadAthletesMeta(){
+  try{
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/workouts?athlete=eq.__meta__&select=data`,
+      {headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}}
+    );
+    if(!r.ok) throw new Error();
+    const rows = await r.json();
+    if(rows.length && rows[0].data.athletes){
+      athletes = rows[0].data.athletes;
+      return true;
+    }
+  }catch{}
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATA HELPERS
+// ═══════════════════════════════════════════════════════════
+function get(key){ return db[currentId]?.[key] ?? ""; }
+function set(key,val){
+  if(!db[currentId]) db[currentId]={};
+  db[currentId][key]=val;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>dbSave(currentId),1200);
+}
+
+function getAthlete(id){ return athletes.find(a=>a.id===id); }
+function currentAthlete(){ return getAthlete(currentId); }
+function accentColor(){ return currentAthlete()?.colour||"#e8ff00"; }
+
+function applyAccent(col){
+  document.documentElement.style.setProperty("--accent",col);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  THEME
+// ═══════════════════════════════════════════════════════════
+function toggleTheme(){
+  const html = document.documentElement;
+  const isDark = html.getAttribute("data-theme")==="dark";
+  html.setAttribute("data-theme", isDark?"light":"dark");
+  document.getElementById("theme-btn").textContent = isDark?"🌙 Dark":"☀️ Light";
+  set("theme", isDark?"light":"dark");
+}
+
+function applyTheme(){
+  const t = get("theme")||"dark";
+  document.documentElement.setAttribute("data-theme",t);
+  document.getElementById("theme-btn").textContent = t==="dark"?"☀️ Light":"🌙 Dark";
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PIN SYSTEM
+// ═══════════════════════════════════════════════════════════
+function isPinUnlocked(id){
+  const exp = pinSessions[id];
+  return exp && Date.now() < exp;
+}
+
+function unlockPin(id){ pinSessions[id] = Date.now() + 5*60*1000; }
+
+function hasPin(id){ return !!(db[id]?.["__pin__"]); }
+
+// open pin modal — mode: "set"|"verify"|"verify-delete"
+function openPinModal(mode, athleteId, onSuccess){
+  pinBuffer="";
+  pendingPinAction = {mode, athleteId, onSuccess};
+  updatePinDots();
+  document.getElementById("pin-error").textContent="";
+
+  const title = document.getElementById("pin-modal-title");
+  const sub   = document.getElementById("pin-modal-sub");
+  if(mode==="set"){
+    title.textContent="Set PIN";
+    sub.textContent="Choose a 4-digit PIN to protect your data.";
+  } else {
+    title.textContent="Enter PIN";
+    sub.textContent=`Enter ${getAthlete(athleteId)?.name||""}'s PIN to continue.`;
+  }
+  openModal("modal-pin");
+}
+
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById(`pd${i}`).className =
+      "pin-dot"+(i<pinBuffer.length?" filled":"");
+  }
+}
+
+function pinKey(k){
+  if(k==="⌫"||k===""){
+    pinBuffer = pinBuffer.slice(0,-1);
+    updatePinDots();
+    return;
+  }
+  if(pinBuffer.length>=4) return;
+  pinBuffer += k;
+  updatePinDots();
+  if(pinBuffer.length===4) setTimeout(submitPin,120);
+}
+
+function submitPin(){
+  const {mode,athleteId,onSuccess} = pendingPinAction||{};
+  if(mode==="set"){
+    // store hashed pin (simple — just store as-is for this use case)
+    if(!db[athleteId]) db[athleteId]={};
+    db[athleteId]["__pin__"] = pinBuffer;
+    dbSave(athleteId);
+    unlockPin(athleteId);
+    closeModal("modal-pin");
+    if(onSuccess) onSuccess();
+  } else {
+    const stored = db[athleteId]?.["__pin__"];
+    if(pinBuffer===stored){
+      unlockPin(athleteId);
+      closeModal("modal-pin");
+      if(onSuccess) onSuccess();
+    } else {
+      document.getElementById("pin-error").textContent="Incorrect PIN";
+      pinBuffer="";
+      updatePinDots();
+    }
+  }
+}
+
+function closePinModal(){
+  pendingPinAction=null;
+  pinBuffer="";
+  closeModal("modal-pin");
+}
+
+// Guard for destructive actions
+function requirePin(id, action){
+  if(!hasPin(id)){
+    // no pin set — ask if they want to set one first or just proceed
+    action();
+    return;
+  }
+  if(isPinUnlocked(id)){
+    action();
+    return;
+  }
+  openPinModal("verify", id, action);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ATHLETE MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function renderAthleteChips(){
+  const wrap = document.getElementById("athlete-tabs");
+  wrap.innerHTML = athletes.map(a=>`
+    <div class="athlete-chip${a.id===currentId?" active":""}"
+      style="${a.id===currentId?`border-color:${a.colour};color:${a.colour};background:${a.colour}18`:""}"
+      onclick="switchAthlete('${a.id}')">
+      <span class="chip-dot" style="background:${a.colour}"></span>
+      ${a.name}
+      <span class="chip-del" onclick="event.stopPropagation();tryDeleteAthlete('${a.id}')" title="Delete">×</span>
+    </div>
+  `).join("");
+}
+
+async function switchAthlete(id){
+  currentId = id;
+  applyAccent(accentColor());
+  await dbFetch(id);
+  applyTheme();
+  renderAthleteChips();
+  rerenderAll();
+  updateDashboard();
+}
+
+function openAddAthlete(){
+  document.getElementById("new-athlete-name").value="";
+  document.getElementById("new-athlete-pr").value="";
+  newAthleteColour = PRESET_COLOURS[athletes.length % PRESET_COLOURS.length];
+  renderSwatches("new-athlete-swatches", newAthleteColour, c=>{ newAthleteColour=c; });
+  openModal("modal-add-athlete");
+}
+
+async function confirmAddAthlete(){
+  const name = document.getElementById("new-athlete-name").value.trim();
+  const pr   = parseFloat(document.getElementById("new-athlete-pr").value);
+  if(!name||!pr){ alert("Please enter name and PR."); return; }
+
+  const id = name.toLowerCase().replace(/\s+/g,"-")+"-"+Date.now();
+  athletes.push({id, name, pr, colour: newAthleteColour});
+  await saveAthletesMeta();
+  await dbFetch(id);
+  closeModal("modal-add-athlete");
+  await switchAthlete(id);
+}
+
+let athleteToDelete = null;
+
+function tryDeleteAthlete(id){
+  if(athletes.length<=1){ alert("Cannot delete the last athlete."); return; }
+  athleteToDelete = id;
+  const a = getAthlete(id);
+  document.getElementById("delete-confirm-text").textContent =
+    `Delete all data for ${a.name}? This cannot be undone.`;
+
+  const pinArea = document.getElementById("delete-pin-area");
+  if(hasPin(id) && !isPinUnlocked(id)){
+    pinArea.innerHTML=`
+      <div class="pin-locked-msg">
+        <span>🔒 ${a.name}'s PIN is required to delete.</span>
+      </div>`;
+    document.getElementById("delete-confirm-btn").style.display="none";
+    // show a mini verify flow inline
+    pinArea.innerHTML += `
+      <label style="font-size:10px;letter-spacing:2px;color:var(--muted);display:block;margin-bottom:6px">ENTER PIN</label>
+      <input type="password" maxlength="4" inputmode="numeric"
+        id="delete-pin-input" placeholder="••••"
+        style="width:100px;text-align:center;font-size:18px;letter-spacing:6px">
+      <div style="font-size:11px;color:var(--red);margin-top:4px" id="delete-pin-err"></div>`;
+    document.getElementById("delete-confirm-btn").style.display="";
+    document.getElementById("delete-confirm-btn").onclick = verifyAndDelete;
+  } else {
+    pinArea.innerHTML="";
+    document.getElementById("delete-confirm-btn").style.display="";
+    document.getElementById("delete-confirm-btn").onclick = confirmDeleteAthlete;
+  }
+  openModal("modal-delete-athlete");
+}
+
+function verifyAndDelete(){
+  const input = document.getElementById("delete-pin-input")?.value;
+  const stored = db[athleteToDelete]?.["__pin__"];
+  if(input!==stored){
+    document.getElementById("delete-pin-err").textContent="Incorrect PIN";
+    return;
+  }
+  confirmDeleteAthlete();
+}
+
+async function confirmDeleteAthlete(){
+  if(!athleteToDelete) return;
+  // delete from supabase
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/workouts?athlete=eq.${encodeURIComponent(athleteToDelete)}`,{
+      method:"DELETE",
+      headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY}
+    });
+  }catch{}
+
+  athletes = athletes.filter(a=>a.id!==athleteToDelete);
+  delete db[athleteToDelete];
+  athleteToDelete=null;
+  await saveAthletesMeta();
+  closeModal("modal-delete-athlete");
+  await switchAthlete(athletes[0].id);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COLOUR SWATCHES
+// ═══════════════════════════════════════════════════════════
+function renderSwatches(containerId, currentColour, onChange){
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = PRESET_COLOURS.map(c=>`
+    <div class="swatch${c===currentColour?" active":""}"
+      style="background:${c}"
+      onclick="selectSwatch('${containerId}','${c}')"></div>
+  `).join("")+`
+    <input type="color" value="${currentColour}" title="Custom colour"
+      style="width:32px;height:32px;border-radius:50%;border:3px solid var(--border);cursor:pointer;padding:2px;"
+      onchange="selectSwatch('${containerId}',this.value)">`;
+  wrap._onChange = onChange;
+}
+
+function selectSwatch(containerId, colour){
+  const wrap = document.getElementById(containerId);
+  wrap.querySelectorAll(".swatch").forEach(s=>{
+    s.classList.toggle("active", s.style.background===colour||
+      s.style.backgroundColor===colour);
+  });
+  if(containerId==="new-athlete-swatches"){ newAthleteColour=colour; return; }
+  if(containerId==="dash-swatches"){
+    const a = athletes.find(x=>x.id===currentId);
+    if(a){ a.colour=colour; applyAccent(colour); saveAthletesMeta(); renderAthleteChips(); }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ═══════════════════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add("open"); }
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
+// ═══════════════════════════════════════════════════════════
+//  PROGRAM DATA
+// ═══════════════════════════════════════════════════════════
+const MUSCLE_COLORS={
+  chest:"var(--red)",back:"var(--cyan)",biceps:"var(--accent)",
+  triceps:"var(--accent)",shoulders:"var(--purple)","rear delt":"var(--purple)",
+  quads:"var(--green)",hamstrings:"var(--green)",glutes:"var(--pink)",
+  calves:"var(--green)",core:"var(--orange)"
+};
+
+function smolovWeight(weekIdx, day, athletePr){
+  const pcts={Monday:[.70,.70,.70],Wednesday:[.76,.76,.76],
+              Friday:[.81,.81,.81],Saturday:[.85,.85,.85]};
+  const pct = pcts[day]?.[weekIdx];
+  if(!pct) return null;
+  return Math.round((athletePr*pct + weekIdx*2.5)*2)/2;
+}
+
+const SMOLOV_SCHEMES={Monday:"6×6",Wednesday:"7×5",Friday:"8×4",Saturday:"10×3"};
+
+const ACCESSORIES={
+  Monday:[
+    {n:"Pec Deck",s:"2×15",m:"chest"},{n:"Skull Crushers EZ Bar",s:"3×10",m:"triceps"},
+    {n:"Tricep Pushdown rope",s:"3×15",m:"triceps"},{n:"OHT Extension cable",s:"2×12",m:"triceps"},
+  ],
+  Tuesday:[
+    {n:"Deadlift",s:"4×5",m:"back"},{n:"Pendlay Row",s:"4×8",m:"back"},
+    {n:"Lat Pulldown wide grip",s:"3×10",m:"back"},{n:"Cable Row close grip",s:"3×12",m:"back"},
+    {n:"Rear Delt Reverse Fly",s:"3×15",m:"rear delt"},{n:"Face Pull rope",s:"2×15",m:"rear delt"},
+    {n:"EZ Bar Curl",s:"4×10",m:"biceps"},{n:"Incline Dumbbell Curl",s:"3×12",m:"biceps"},
+    {n:"Hammer Curl",s:"2×12",m:"biceps"},
+  ],
+  Wednesday:[
+    {n:"Barbell Squat",s:"4×6",m:"quads"},{n:"Romanian Deadlift",s:"3×10",m:"hamstrings"},
+    {n:"Leg Press",s:"3×12",m:"quads"},{n:"Hip Thrust barbell",s:"3×12",m:"glutes"},
+    {n:"Leg Curl machine",s:"3×12",m:"hamstrings"},{n:"Leg Extension machine",s:"3×12",m:"quads"},
+    {n:"Calf Raise standing",s:"3×15",m:"calves"},
+  ],
+  Thursday:[
+    {n:"Barbell OHP",s:"3×5 @60%",m:"shoulders"},{n:"Cable Lateral Raise",s:"3×15",m:"shoulders"},
+    {n:"Face Pull rope",s:"3×15",m:"rear delt"},{n:"Rear Delt Reverse Fly",s:"2×15",m:"rear delt"},
+    {n:"Preacher Curl",s:"3×10",m:"biceps"},{n:"Cable Curl single arm",s:"3×12",m:"biceps"},
+    {n:"Dips assisted",s:"3×10",m:"triceps"},{n:"Cable Pushdown V-bar",s:"3×12",m:"triceps"},
+  ],
+  Friday:[
+    {n:"Pull-up or Assisted",s:"4×max",m:"back"},{n:"Lat Pulldown underhand",s:"3×10",m:"back"},
+    {n:"Single Arm DB Row",s:"3×10",m:"back"},{n:"Seated Cable Row wide",s:"3×12",m:"back"},
+    {n:"Cable Crunch",s:"3×15",m:"core"},{n:"Hanging Knee Raise",s:"3×12",m:"core"},
+    {n:"Plank",s:"2×60s",m:"core"},
+  ],
+  Saturday:[
+    {n:"Chest Press Machine",s:"2×12",m:"chest"},{n:"Pec Deck",s:"2×15",m:"chest"},
+    {n:"Incline DB Curl",s:"3×12",m:"biceps"},{n:"Cable + Hammer Curl superset",s:"3×10+10",m:"biceps"},
+    {n:"Preacher Curl machine",s:"2×10",m:"biceps"},{n:"OHT Extension cable",s:"3×12",m:"triceps"},
+    {n:"Pushdown straight bar + dropset",s:"3×15",m:"triceps"},
+  ],
+};
+
+const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+function e1rm(w,r){
+  if(!w||!r) return "—";
+  return (parseFloat(w)*(1+parseFloat(r)/30)).toFixed(1)+" kg";
+}
+
+// Volume calculator for a session
+function calcVolume(weekKey, day){
+  let total=0;
+  // bench
+  const bw=parseFloat(get(`${weekKey}-${day}-bench-wt`));
+  const br=parseFloat(get(`${weekKey}-${day}-bench-reps`));
+  const bs = SMOLOV_SCHEMES[day];
+  if(bw&&br&&bs){
+    const sets=parseInt(bs.split("×")[0]);
+    total+=bw*br*sets;
+  }
+  // accessories
+  (ACCESSORIES[day]||[]).forEach((ex,i)=>{
+    const w=parseFloat(get(`${weekKey}-${day}-ex${i}-wt`));
+    const r=parseFloat(get(`${weekKey}-${day}-ex${i}-reps`));
+    if(w&&r){
+      const setsMatch = ex.s.match(/^(\d+)×/);
+      const sets = setsMatch ? parseInt(setsMatch[1]) : 3;
+      total+=w*r*sets;
+    }
+  });
+  return total>0 ? total.toLocaleString()+" kg" : "—";
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function updateDashboard(){
+  const a = currentAthlete();
+  if(!a) return;
+  const targetPR = parseFloat(get("target-pr")) || Math.round(a.pr*1.2);
+  let sessions=0, bestE1rm=0, totalVol=0;
+  const benchDays=["Monday","Wednesday","Friday","Saturday"];
+  for(const wk of ["week1","week2","week3"]){
+    for(const day of benchDays){
+      const w=parseFloat(get(`${wk}-${day}-bench-wt`));
+      const r=parseFloat(get(`${wk}-${day}-bench-reps`));
+      if(w&&r){sessions++;const v=w*(1+r/30);if(v>bestE1rm)bestE1rm=v;}
+    }
+  }
+  const progPct=Math.round((sessions/12)*100);
+  const currentPR=parseFloat(get("pr-0"))||a.pr;
+  const benchPct=Math.min(100,Math.max(0,Math.round(((currentPR-a.pr)/(targetPR-a.pr))*100)));
+
+  const pinSet = hasPin(currentId);
+  const pinUnlocked = isPinUnlocked(currentId);
+
+  document.getElementById("page-dashboard").innerHTML=`
+  <div class="hero">
+    <h1>SMOLOV<br><span>${a.name.toUpperCase()}</span></h1>
+    <p>4-week bench peaking block · ${a.pr}kg starting PR</p>
+    <div class="target-edit-wrap">
+      <label>Target PR</label>
+      <input type="number" step="0.5" value="${targetPR}"
+        onchange="set('target-pr',this.value);updateDashboard()"
+        style="width:80px;font-family:'Bebas Neue',sans-serif;font-size:18px;
+        color:${accentColor()};text-align:center;border-color:${accentColor()};
+        background:var(--bg);border:1px solid;border-radius:3px;padding:5px 8px;">
+      <span style="font-size:11px;color:var(--muted)">kg</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Starting PR</div>
+      <div class="value">${a.pr} kg</div><div class="sub">Baseline</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Target PR</div>
+      <div class="value">${targetPR} kg</div><div class="sub">Editable above</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Sessions</div>
+      <div class="value">${sessions}/12</div><div class="sub">Completed</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Best e1RM</div>
+      <div class="value">${bestE1rm>0?bestE1rm.toFixed(0)+" kg":"—"}</div>
+      <div class="sub">From logs</div>
+    </div>
+  </div>
+
+  <div class="prog-bar-wrap">
+    <div class="prog-bar-label"><span>PROGRAM COMPLETION</span><span>${progPct}%</span></div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width:${progPct}%"></div></div>
+  </div>
+  <div class="prog-bar-wrap">
+    <div class="prog-bar-label"><span>BENCH JOURNEY (${a.pr}→${targetPR}kg)</span><span>${benchPct}%</span></div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width:${benchPct}%"></div></div>
+  </div>
+
+  <div class="section-title">Program Schedule</div>
+  <div class="schedule-grid">
+    ${["week1","week2","week3"].map((wk,wi)=>{
+      const titles=["BASE","+2.5KG","+5KG"];
+      return `<div class="sched-card">
+        <div class="sched-week">Week ${wi+1}</div>
+        <div class="sched-title">${titles[wi]}</div>
+        <div class="sched-items">
+          Mon 6×6 @ ${smolovWeight(wi,"Monday",a.pr)}kg<br>
+          Wed 7×5 @ ${smolovWeight(wi,"Wednesday",a.pr)}kg<br>
+          Fri 8×4 @ ${smolovWeight(wi,"Friday",a.pr)}kg<br>
+          <strong>Sat 10×3 @ ${smolovWeight(wi,"Saturday",a.pr)}kg</strong>
+        </div>
+      </div>`;
+    }).join("")}
+    <div class="sched-card" style="border-top-color:var(--red)">
+      <div class="sched-week">Week 4</div>
+      <div class="sched-title">DELOAD & TEST</div>
+      <div class="sched-items">Mon 3×3 light<br>Wed 3×2 light<br>Thu/Fri REST<br><strong>Sat 1RM TEST</strong></div>
+    </div>
+  </div>
+
+  <div class="section-title">Key Rules</div>
+  <div class="note-grid">
+    <div class="note-card"><h4>Bench First</h4><p>Always first exercise — fresh CNS every session.</p></div>
+    <div class="note-card green"><h4>90s Rest</h4><p>Exactly 90 seconds between all Smolov sets. Timer on.</p></div>
+    <div class="note-card accent"><h4>Face Pulls</h4><p>2×15 before every bench session.</p></div>
+    <div class="note-card purple"><h4>Deload</h4><p>Week 4 mandatory — don't skip it.</p></div>
+  </div>
+
+  <!-- COLOUR PICKER -->
+  <div class="colour-section">
+    <div class="colour-title">Accent Colour — ${a.name}</div>
+    <div class="colour-swatches" id="dash-swatches"></div>
+  </div>
+
+  <!-- PIN SETTINGS -->
+  <div style="background:var(--surface);border-radius:6px;padding:16px;margin-top:12px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--accent);margin-bottom:10px">
+      PIN Protection
+    </div>
+    ${pinSet ? `
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        PIN is set. Unlocked: ${pinUnlocked?"Yes (expires in ~5 mins)":"No"}.
+      </p>
+      <button class="save-btn" style="margin-top:0;margin-right:8px"
+        onclick="requirePin('${currentId}',()=>openPinModal('set','${currentId}',()=>{}))">
+        Change PIN
+      </button>
+      <button class="save-btn" style="margin-top:0;background:var(--red)"
+        onclick="requirePin('${currentId}',()=>{db['${currentId}']['__pin__']=null;dbSave('${currentId}');updateDashboard();})">
+        Remove PIN
+      </button>
+    ` : `
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        No PIN set. Set a PIN to protect your data from permanent changes.
+      </p>
+      <button class="save-btn" style="margin-top:0"
+        onclick="openPinModal('set','${currentId}',()=>{updateDashboard();})">
+        Set PIN
+      </button>
+    `}
+  </div>`;
+
+  renderSwatches("dash-swatches", accentColor(), c=>{
+    const at=athletes.find(x=>x.id===currentId);
+    if(at){at.colour=c;applyAccent(c);saveAthletesMeta();renderAthleteChips();}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEEK PAGES
+// ═══════════════════════════════════════════════════════════
+function buildWeekPage(weekKey){
+  const container=document.getElementById(`page-${weekKey}`);
+  if(!container||container.dataset.built) return;
+  container.dataset.built="1";
+  const wNum=weekKey.replace("week","");
+  const wi=parseInt(wNum)-1;
+  const a=currentAthlete();
+
+  let html=`<div class="hero" style="padding-top:14px">
+    <h1 style="font-size:clamp(30px,5vw,52px)">WEEK <span>${wNum}</span></h1>
+    <p>Log weights, reps and RPE · auto-saves to cloud</p>
+  </div>`;
+
+  for(const day of DAYS){
+    const acc=ACCESSORIES[day]||[];
+    const scheme=SMOLOV_SCHEMES[day];
+    const isBenchDay=!!scheme;
+    const target=isBenchDay?smolovWeight(wi,day,a.pr):null;
+
+    html+=`<div class="day-card">
+      <div class="day-header" onclick="toggleDay('${weekKey}-${day}')">
+        <h3 style="color:${isBenchDay?'var(--accent)':'var(--text)'}">${day.toUpperCase()}</h3>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--muted)" id="vol-${weekKey}-${day}"></span>
+          <span class="badge" style="background:${isBenchDay?'rgba(232,255,0,.1)':'rgba(255,255,255,.03)'};
+            color:${isBenchDay?'var(--accent)':'var(--muted)'};
+            border:1px solid ${isBenchDay?'rgba(232,255,0,.2)':'var(--border)'}">
+            ${isBenchDay?"BENCH DAY":"ACCESSORY"}</span>
+        </div>
+      </div>
+      <div class="day-body" id="body-${weekKey}-${day}">`;
+
+    if(isBenchDay){
+      const wKey=`${weekKey}-${day}-bench-wt`;
+      const rKey=`${weekKey}-${day}-bench-reps`;
+      const pKey=`${weekKey}-${day}-bench-rpe`;
+      html+=`<div class="smolov-box">
+        <div class="smolov-title">FLAT BENCH — ${scheme}</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:3px">
+          ${["TARGET","ACTUAL WT","REPS","RPE","e1RM"].map(l=>`<div class="input-label">${l}</div>`).join("")}
+        </div>
+        <div class="input-grid-5">
+          <div class="target-pill">${target} kg</div>
+          <input type="number" step="0.5" placeholder="kg" id="${wKey}" value="${get(wKey)}"
+            onchange="set('${wKey}',this.value);refreshE1rm('${weekKey}','${day}','bench');refreshVol('${weekKey}','${day}')">
+          <input type="number" placeholder="reps" id="${rKey}" value="${get(rKey)}"
+            onchange="set('${rKey}',this.value);refreshE1rm('${weekKey}','${day}','bench');refreshVol('${weekKey}','${day}')">
+          <input type="number" step="0.5" min="1" max="10" placeholder="RPE" id="${pKey}" value="${get(pKey)}"
+            onchange="set('${pKey}',this.value)">
+          <div class="e1rm-pill" id="${weekKey}-${day}-bench-e1rm">${e1rm(get(wKey),get(rKey))}</div>
+        </div>
+      </div>`;
+    }
+
+    if(acc.length){
+      html+=`<div class="acc-header">
+        <div>EXERCISE</div><div>SCHEME</div><div>WT / REPS</div><div>RPE</div><div>e1RM</div>
+      </div>`;
+      acc.forEach((ex,i)=>{
+        const mc=MUSCLE_COLORS[ex.m]||"var(--text)";
+        const wk2=`${weekKey}-${day}-ex${i}-wt`;
+        const rk2=`${weekKey}-${day}-ex${i}-reps`;
+        const pk2=`${weekKey}-${day}-ex${i}-rpe`;
+        html+=`<div class="acc-row">
+          <div class="ex-name" style="color:${mc}">${ex.n}</div>
+          <div style="font-size:10px;color:var(--muted)">${ex.s}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <input type="number" step="0.5" placeholder="kg" id="${wk2}" value="${get(wk2)}"
+              onchange="set('${wk2}',this.value);refreshE1rm('${weekKey}','${day}','ex${i}');refreshVol('${weekKey}','${day}')">
+            <input type="number" placeholder="reps" id="${rk2}" value="${get(rk2)}"
+              onchange="set('${rk2}',this.value);refreshE1rm('${weekKey}','${day}','ex${i}');refreshVol('${weekKey}','${day}')">
+          </div>
+          <input type="number" step="0.5" min="1" max="10" placeholder="RPE" id="${pk2}" value="${get(pk2)}"
+            onchange="set('${pk2}',this.value)">
+          <div class="e1rm-pill" id="${weekKey}-${day}-ex${i}-e1rm" style="font-size:11px">
+            ${e1rm(get(wk2),get(rk2))}</div>
+        </div>`;
+      });
+    }
+
+    html+=`
+      <div class="volume-box">
+        <div>
+          <div class="volume-label">Session Volume</div>
+          <div class="volume-value" id="vol-display-${weekKey}-${day}">${calcVolume(weekKey,day)}</div>
+          <div class="volume-sub">total kg lifted this session</div>
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveDay('${weekKey}','${day}')">Save Session</button>
+      <span class="save-msg" id="msg-${weekKey}-${day}">✓ Saved to cloud</span>
+      </div></div>`;
+  }
+
+  container.innerHTML=html;
+  // init vol badges
+  DAYS.forEach(d=>refreshVol(weekKey,d));
+}
+
+function toggleDay(id){
+  document.getElementById(`body-${id}`)?.classList.toggle("open");
+}
+
+function refreshE1rm(week,day,prefix){
+  const w=document.getElementById(`${week}-${day}-${prefix}-wt`)?.value;
+  const r=document.getElementById(`${week}-${day}-${prefix}-reps`)?.value;
+  const el=document.getElementById(`${week}-${day}-${prefix}-e1rm`);
+  if(el) el.textContent=e1rm(w,r);
+  updateDashboard();
+}
+
+function refreshVol(week,day){
+  const v=calcVolume(week,day);
+  const disp=document.getElementById(`vol-display-${week}-${day}`);
+  const badge=document.getElementById(`vol-${week}-${day}`);
+  if(disp) disp.textContent=v;
+  if(badge && v!=="—") badge.textContent=v;
+}
+
+function saveDay(week,day){
+  const msg=document.getElementById(`msg-${week}-${day}`);
+  if(msg){msg.classList.add("show");setTimeout(()=>msg.classList.remove("show"),2500);}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DELOAD PAGE
+// ═══════════════════════════════════════════════════════════
+function buildDeloadPage(){
+  const container=document.getElementById("page-deload");
+  if(!container||container.dataset.built) return;
+  container.dataset.built="1";
+  const a=currentAthlete();
+  const pr=a.pr;
+
+  container.innerHTML=`
+  <div class="hero" style="padding-top:14px">
+    <h1 style="font-size:clamp(30px,5vw,52px)">DELOAD &<br><span>PR TEST</span></h1>
+    <p>Week 4 — recover then test</p>
+  </div>
+  <div class="schedule-grid">
+    <div class="sched-card"><div class="sched-week">Monday</div><div class="sched-title">3×3</div>
+      <div class="sched-items">${smolovWeight(2,"Saturday",pr)-5}kg · groove only</div></div>
+    <div class="sched-card"><div class="sched-week">Tuesday</div><div class="sched-title">LIGHT BACK</div>
+      <div class="sched-items">Pulldowns + curls<br>No deadlift</div></div>
+    <div class="sched-card"><div class="sched-week">Wednesday</div><div class="sched-title">3×2</div>
+      <div class="sched-items">${smolovWeight(2,"Saturday",pr)-2.5}kg · last touch</div></div>
+    <div class="sched-card" style="border-top-color:var(--red)"><div class="sched-week">Thu/Fri</div>
+      <div class="sched-title">FULL REST</div>
+      <div class="sched-items">Eat big, sleep 8+hrs<br>Visualise the lift</div></div>
+  </div>
+
+  <div class="section-title" style="margin-top:16px">Saturday Warmup</div>
+  <div style="background:var(--surface);border-radius:6px;overflow:hidden;margin-top:8px">
+    ${[
+      ["Empty bar","×10","Groove"],
+      [Math.round(pr*.6)+" kg","×6",""],
+      [Math.round(pr*.75)+" kg","×4",""],
+      [Math.round(pr*.88)+" kg","×2",""],
+      [pr+" kg","×1","Current PR feel — REST 5 mins"],
+      [Math.round(pr*1.04)+" kg","×1","First attempt"],
+      [Math.round(pr*1.08)+" kg","×1","Target"],
+      [Math.round(pr*1.12)+" kg","×1","Optimistic"],
+      [Math.round(pr*1.18)+" kg","×1","Best case goal 🏆"],
+    ].map(([wt,reps,note])=>{
+      const isAttempt=reps==="×1";
+      return `<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;
+        padding:9px 16px;background:${isAttempt?`${accentColor()}08`:'var(--surface)'};
+        border-bottom:1px solid var(--border);align-items:center">
+        <div style="font-weight:${isAttempt?700:400};color:${isAttempt?'var(--accent)':'var(--text)'};font-size:13px">${wt}</div>
+        <div style="font-size:11px;color:${isAttempt?'var(--accent)':'var(--muted)'}">${reps}</div>
+        <div style="font-size:10px;color:var(--muted)">${note}</div>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="section-title" style="margin-top:16px">Log PR Test</div>
+  <div style="background:var(--surface);border-radius:6px;padding:16px;margin-top:8px;
+    border:1px solid var(--accent)">
+    <div style="font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">
+      NEW 1RM — ${a.name.toUpperCase()}
+    </div>
+    <input type="number" step="0.5" placeholder="kg" value="${get('pr-1')}"
+      style="background:var(--bg);border:2px solid var(--accent);color:var(--accent);
+      font-family:'Bebas Neue',sans-serif;font-size:32px;padding:10px 14px;
+      border-radius:4px;width:180px;text-align:center"
+      onchange="set('pr-1',this.value);updateDashboard()">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted);margin-left:6px">kg</span>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PR TRACKER
+// ═══════════════════════════════════════════════════════════
+function buildTrackerPage(){
+  const container=document.getElementById("page-tracker");
+  if(!container||container.dataset.built) return;
+  container.dataset.built="1";
+  const a=currentAthlete();
+  const milestones=["Pre-program","Post Block 1","Post Block 2","Post Block 3","Post Block 4"];
+
+  container.innerHTML=`
+  <div class="hero" style="padding-top:14px">
+    <h1 style="font-size:clamp(30px,5vw,52px)">PR <span>TRACKER</span></h1>
+    <p>${a.name} · log PRs after each deload test</p>
+  </div>
+  <table class="pr-table">
+    <thead><tr>
+      <th style="text-align:left">Milestone</th><th>1RM</th><th>Change</th>
+    </tr></thead>
+    <tbody>
+      ${milestones.map((label,i)=>`
+      <tr>
+        <td style="text-align:left;font-size:11px;color:var(--muted)">${label}</td>
+        <td>
+          <input type="number" step="0.5" value="${get(`pr-${i}`)|| (i===0?a.pr:'')}" placeholder="kg"
+            id="pr-input-${i}"
+            style="background:var(--bg);border:1px solid var(--accent);color:var(--accent);
+            font-weight:700;font-size:14px;padding:5px;border-radius:3px;width:75px;text-align:center"
+            onchange="set('pr-${i}',this.value);updatePRDiffs()">
+        </td>
+        <td id="pr-diff-${i}" style="color:var(--green);font-weight:700;font-size:12px">—</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+
+  updatePRDiffs();
+}
+
+function updatePRDiffs(){
+  for(let i=1;i<5;i++){
+    const curr=parseFloat(document.getElementById(`pr-input-${i}`)?.value);
+    const prev=parseFloat(document.getElementById(`pr-input-${i-1}`)?.value);
+    const el=document.getElementById(`pr-diff-${i}`);
+    if(!el) continue;
+    if(curr&&prev){
+      const d=(curr-prev).toFixed(1);
+      el.textContent=d>0?`+${d} kg`:`${d} kg`;
+      el.style.color=d>0?"var(--green)":"var(--red)";
+    } else el.textContent="—";
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PAGE ROUTING
+// ═══════════════════════════════════════════════════════════
+function rerenderAll(){
+  ["week1","week2","week3","deload","tracker"].forEach(id=>{
+    const el=document.getElementById(`page-${id}`);
+    if(el){el.innerHTML="";el.dataset.built="";}
+  });
+  const active=document.querySelector(".page.active");
+  if(active&&active.id!=="page-dashboard"){
+    buildPage(active.id.replace("page-",""));
+  }
+}
+
+function buildPage(id){
+  if(["week1","week2","week3"].includes(id)) buildWeekPage(id);
+  if(id==="deload") buildDeloadPage();
+  if(id==="tracker") buildTrackerPage();
+}
+
+function showPage(id,evt){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById(`page-${id}`)?.classList.add("active");
+  if(evt) evt.target.classList.add("active");
+  buildPage(id);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+(async()=>{
+  const loaded = await loadAthletesMeta();
+  if(!loaded) athletes=[...DEFAULT_ATHLETES];
+  currentId = athletes[0].id;
+  await dbFetch(currentId);
+  // prefetch others in background
+  athletes.slice(1).forEach(a=>dbFetch(a.id));
+  applyAccent(accentColor());
+  applyTheme();
+  renderAthleteChips();
+  updateDashboard();
+})();
+</script>
+</body>
+</html>
