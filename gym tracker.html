@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smolov Jr. Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0a;--surface:#111;--surface2:#1a1a1a;--border:#222;
+    --accent:#e8ff00;--cyan:#00e5ff;--red:#ff4d00;--purple:#b47cff;
+    --green:#00ff9d;--orange:#ff9d00;--pink:#ff4d8b;
+    --text:#f0f0f0;--muted:#666;
+    --athlete-color:var(--accent);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+  /* ATHLETE TOGGLE */
+  .athlete-bar{display:flex;align-items:center;gap:12px;padding:16px 20px;
+    background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+  .athlete-btn{padding:8px 20px;border-radius:4px;font-size:12px;font-weight:700;
+    letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:2px solid var(--border);
+    background:transparent;color:var(--muted);transition:.2s;}
+  .athlete-btn.josh.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,.08);}
+  .athlete-btn.ross.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08);}
+  .athlete-btn:hover:not(.active){border-color:var(--text);color:var(--text);}
+  .athlete-label{font-size:11px;letter-spacing:2px;color:var(--muted);margin-left:auto;}
+  .sync-status{font-size:10px;letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+  .sync-dot.ok{background:var(--green);}
+  .sync-dot.err{background:var(--red);}
+  .sync-dot.loading{background:var(--orange);animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  /* NAV */
+  nav{display:flex;gap:4px;padding:12px 20px 0;flex-wrap:wrap;}
+  .tab{padding:8px 14px;border-radius:4px 4px 0 0;font-size:11px;font-weight:600;
+    letter-spacing:2px;text-transform:uppercase;cursor:pointer;background:var(--surface);
+    color:var(--muted);border:1px solid var(--border);border-bottom:none;transition:.2s;}
+  .tab.active{background:var(--surface2);color:var(--athlete-color);border-color:var(--athlete-color);}
+  .tab:hover:not(.active){color:var(--text);}
+
+  main{padding:20px;max-width:1000px;margin:0 auto;}
+  .page{display:none;}.page.active{display:block;}
+
+  /* HERO */
+  .hero{padding:28px 0 20px;}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,7vw,72px);line-height:.9;letter-spacing:1px;}
+  .hero h1 span{color:var(--athlete-color);}
+  .hero p{color:var(--muted);font-size:12px;margin-top:8px;letter-spacing:1px;}
+
+  /* STAT CARDS */
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:16px 0;}
+  .stat-card{background:var(--surface);border-radius:4px;padding:14px;border-left:3px solid var(--athlete-color);}
+  .stat-card .label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+  .stat-card .value{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--text);margin-top:4px;}
+  .stat-card .sub{font-size:10px;color:var(--athlete-color);margin-top:2px;}
+
+  /* PROG BAR */
+  .prog-bar-wrap{margin-bottom:14px;}
+  .prog-bar-label{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;}
+  .prog-bar-label span:first-child{color:var(--muted);letter-spacing:1px;}
+  .prog-bar-label span:last-child{color:var(--athlete-color);font-weight:600;}
+  .prog-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+  .prog-bar-fill{height:100%;background:var(--athlete-color);border-radius:3px;transition:width .6s ease;}
+
+  /* SCHEDULE */
+  .schedule-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px;}
+  .sched-card{background:var(--surface);border-radius:4px;padding:14px;border-top:2px solid var(--athlete-color);}
+  .sched-week{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+  .sched-title{font-family:'Bebas Neue',sans-serif;font-size:18px;margin-top:4px;}
+  .sched-items{margin-top:6px;font-size:11px;color:#aaa;line-height:1.8;}
+
+  /* DAY CARDS */
+  .day-card{background:var(--surface);border-radius:6px;overflow:hidden;margin-bottom:10px;}
+  .day-header{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 18px;background:var(--surface2);cursor:pointer;user-select:none;}
+  .day-header h3{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+  .day-header .badge{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+    padding:3px 8px;border-radius:2px;}
+  .day-body{padding:14px 18px;display:none;}
+  .day-body.open{display:block;}
+
+  /* SMOLOV BENCH BOX */
+  .smolov-box{background:rgba(232,255,0,.04);border:1px solid rgba(232,255,0,.15);
+    border-radius:4px;padding:14px;margin-bottom:14px;}
+  .smolov-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--athlete-color);margin-bottom:10px;}
+  .input-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 70px;gap:8px;align-items:center;}
+  .input-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    text-align:center;margin-bottom:3px;}
+  .target-pill{background:rgba(232,255,0,.1);border:1px solid rgba(232,255,0,.25);
+    color:var(--athlete-color);border-radius:3px;padding:6px 8px;font-size:12px;
+    font-weight:600;text-align:center;}
+  input[type=number]{background:var(--bg);border:1px solid var(--border);border-radius:3px;
+    color:var(--text);padding:7px 8px;font-size:12px;width:100%;
+    font-family:'DM Sans',sans-serif;text-align:center;transition:.2s;}
+  input[type=number]:focus{outline:none;border-color:var(--athlete-color);}
+  input[type=text]{background:var(--bg);border:1px solid var(--border);border-radius:3px;
+    color:var(--text);padding:7px 8px;font-size:12px;width:100%;
+    font-family:'DM Sans',sans-serif;transition:.2s;}
+  input[type=text]:focus{outline:none;border-color:var(--athlete-color);}
+  .e1rm-pill{background:var(--bg);border:1px solid var(--border);border-radius:3px;
+    padding:7px 8px;font-size:12px;color:var(--athlete-color);font-weight:600;
+    text-align:center;min-height:34px;display:flex;align-items:center;justify-content:center;}
+
+  /* ACCESSORIES */
+  .acc-header{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 70px;gap:8px;
+    font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    margin-bottom:6px;margin-top:14px;}
+  .acc-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 70px;gap:8px;
+    align-items:center;margin-bottom:7px;}
+  .ex-name{font-size:13px;font-weight:500;}
+
+  /* SAVE */
+  .save-btn{margin-top:14px;background:var(--athlete-color);color:#000;border:none;
+    padding:9px 22px;border-radius:4px;font-weight:700;font-size:11px;
+    letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.2s;}
+  .save-btn:hover{opacity:.85;}
+  .save-msg{font-size:11px;color:var(--green);margin-left:10px;opacity:0;transition:.4s;}
+  .save-msg.show{opacity:1;}
+
+  /* PR TABLE */
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;
+    color:var(--athlete-color);margin:20px 0 4px;}
+  .section-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:14px;}
+  .pr-table{width:100%;border-collapse:collapse;margin-top:12px;}
+  .pr-table th{background:var(--surface2);color:var(--athlete-color);font-size:9px;
+    letter-spacing:2px;text-transform:uppercase;padding:9px 12px;
+    text-align:center;border:1px solid var(--border);}
+  .pr-table td{padding:9px 12px;border:1px solid var(--border);text-align:center;
+    font-size:13px;background:var(--surface);}
+
+  /* NOTE CARDS */
+  .note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:14px;}
+  .note-card{background:var(--surface);border-radius:4px;padding:16px;border-left:3px solid var(--red);}
+  .note-card.green{border-left-color:var(--green);}
+  .note-card.accent{border-left-color:var(--athlete-color);}
+  .note-card.purple{border-left-color:var(--purple);}
+  .note-card h4{font-family:'Bebas Neue',sans-serif;font-size:15px;margin-bottom:6px;}
+  .note-card p{font-size:12px;color:#aaa;line-height:1.7;}
+
+  /* TARGET PR EDIT */
+  .target-edit-wrap{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  .target-edit-wrap label{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  .target-edit-wrap input{width:90px;font-family:'Bebas Neue',sans-serif;font-size:20px;
+    color:var(--athlete-color);text-align:center;border-color:var(--athlete-color);}
+
+  @media(max-width:550px){
+    .input-grid{grid-template-columns:1fr 1fr;}.input-grid .target-pill{grid-column:1/-1;}
+    .acc-row,.acc-header{grid-template-columns:1fr 1fr;}
+    .ex-name{grid-column:1/-1;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ATHLETE TOGGLE -->
+<div class="athlete-bar">
+  <button class="athlete-btn josh active" onclick="setAthlete('josh')">Josh</button>
+  <button class="athlete-btn ross" onclick="setAthlete('ross')">Ross</button>
+  <span class="athlete-label" id="athlete-label">Josh · 65kg PR</span>
+  <div class="sync-status">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-text">—</span>
+  </div>
+</div>
+
+<nav>
+  <div class="tab active" onclick="showPage('dashboard',event)">Dashboard</div>
+  <div class="tab" onclick="showPage('week1',event)">Week 1</div>
+  <div class="tab" onclick="showPage('week2',event)">Week 2</div>
+  <div class="tab" onclick="showPage('week3',event)">Week 3</div>
+  <div class="tab" onclick="showPage('deload',event)">Deload & PR</div>
+  <div class="tab" onclick="showPage('tracker',event)">PR Tracker</div>
+</nav>
+
+<main>
+  <div id="page-dashboard" class="page active"></div>
+  <div id="page-week1" class="page"></div>
+  <div id="page-week2" class="page"></div>
+  <div id="page-week3" class="page"></div>
+  <div id="page-deload" class="page"></div>
+  <div id="page-tracker" class="page"></div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL = "https://sorzrdphywjzyrgelgvs.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kDrH6TN4OHnOoyf1zufX7g_KagChtzn";
+
+const ATHLETES = {
+  josh: { name:"Josh", pr:65, color:"var(--accent)", btnClass:"josh" },
+  ross: { name:"Ross", pr:90, color:"var(--cyan)",   btnClass:"ross" },
+};
+
+let currentAthlete = "josh";
+let db = {};           // in-memory cache: { josh:{...}, ross:{...} }
+let saveTimer = null;
+
+// ═══════════════════════════════════════════════════════════
+//  SUPABASE HELPERS
+// ═══════════════════════════════════════════════════════════
+function setSyncStatus(state, text) {
+  const dot  = document.getElementById("sync-dot");
+  const span = document.getElementById("sync-text");
+  dot.className = "sync-dot " + state;
+  span.textContent = text;
+}
+
+async function dbFetch(athlete) {
+  setSyncStatus("loading","syncing…");
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/workouts?athlete=eq.${athlete}&select=data`,
+      { headers:{
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Content-Type": "application/json"
+        }}
+    );
+    if (!res.ok) throw new Error(res.status);
+    const rows = await res.json();
+    db[athlete] = rows.length ? rows[0].data : {};
+    setSyncStatus("ok","synced");
+    return db[athlete];
+  } catch(e) {
+    setSyncStatus("err","offline");
+    db[athlete] = db[athlete] || {};
+    return db[athlete];
+  }
+}
+
+async function dbSave(athlete) {
+  setSyncStatus("loading","saving…");
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/workouts`,
+      { method:"POST",
+        headers:{
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates"
+        },
+        body: JSON.stringify({
+          id: athlete,
+          athlete: athlete,
+          data: db[athlete],
+          updated_at: new Date().toISOString()
+        })
+      }
+    );
+    if (!res.ok) throw new Error(res.status);
+    setSyncStatus("ok","saved ✓");
+  } catch(e) {
+    setSyncStatus("err","save failed");
+  }
+}
+
+function get(key) {
+  return db[currentAthlete]?.[key] ?? "";
+}
+
+function set(key, val) {
+  if (!db[currentAthlete]) db[currentAthlete] = {};
+  db[currentAthlete][key] = val;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => dbSave(currentAthlete), 1200);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROGRAM DATA
+// ═══════════════════════════════════════════════════════════
+const MUSCLE_COLORS = {
+  chest:"var(--red)", back:"var(--cyan)", biceps:"var(--accent)",
+  triceps:"var(--accent)", shoulders:"var(--purple)", "rear delt":"var(--purple)",
+  quads:"var(--green)", hamstrings:"var(--green)", glutes:"var(--pink)",
+  calves:"var(--green)", core:"var(--orange)"
+};
+
+const SMOLOV = {
+  week1:{ Monday:{s:"6×6",jp:45,rp:62.5}, Wednesday:{s:"7×5",jp:47.5,rp:67.5},
+          Friday:{s:"8×4",jp:52.5,rp:72.5}, Saturday:{s:"10×3",jp:55,rp:77.5} },
+  week2:{ Monday:{s:"6×6",jp:47.5,rp:65}, Wednesday:{s:"7×5",jp:50,rp:67.5},
+          Friday:{s:"8×4",jp:55,rp:72.5}, Saturday:{s:"10×3",jp:57.5,rp:80} },
+  week3:{ Monday:{s:"6×6",jp:50,rp:67.5}, Wednesday:{s:"7×5",jp:52.5,rp:70},
+          Friday:{s:"8×4",jp:57.5,rp:75}, Saturday:{s:"10×3",jp:60,rp:80} },
+};
+
+const ACCESSORIES = {
+  Monday:[
+    {n:"Pec Deck",s:"2×15",m:"chest"},
+    {n:"Skull Crushers EZ Bar",s:"3×10",m:"triceps"},
+    {n:"Tricep Pushdown rope",s:"3×15",m:"triceps"},
+    {n:"OHT Extension cable",s:"2×12",m:"triceps"},
+  ],
+  Tuesday:[
+    {n:"Deadlift",s:"4×5",m:"back"},
+    {n:"Pendlay Row",s:"4×8",m:"back"},
+    {n:"Lat Pulldown wide grip",s:"3×10",m:"back"},
+    {n:"Cable Row close grip",s:"3×12",m:"back"},
+    {n:"Rear Delt Reverse Fly",s:"3×15",m:"rear delt"},
+    {n:"Face Pull rope",s:"2×15",m:"rear delt"},
+    {n:"EZ Bar Curl",s:"4×10",m:"biceps"},
+    {n:"Incline Dumbbell Curl",s:"3×12",m:"biceps"},
+    {n:"Hammer Curl",s:"2×12",m:"biceps"},
+  ],
+  Wednesday:[
+    {n:"Barbell Squat",s:"4×6",m:"quads"},
+    {n:"Romanian Deadlift",s:"3×10",m:"hamstrings"},
+    {n:"Leg Press",s:"3×12",m:"quads"},
+    {n:"Hip Thrust barbell",s:"3×12",m:"glutes"},
+    {n:"Leg Curl machine",s:"3×12",m:"hamstrings"},
+    {n:"Leg Extension machine",s:"3×12",m:"quads"},
+    {n:"Calf Raise standing",s:"3×15",m:"calves"},
+  ],
+  Thursday:[
+    {n:"Barbell OHP",s:"3×5 @60%",m:"shoulders"},
+    {n:"Cable Lateral Raise",s:"3×15",m:"shoulders"},
+    {n:"Face Pull rope",s:"3×15",m:"rear delt"},
+    {n:"Rear Delt Reverse Fly",s:"2×15",m:"rear delt"},
+    {n:"Preacher Curl",s:"3×10",m:"biceps"},
+    {n:"Cable Curl single arm",s:"3×12",m:"biceps"},
+    {n:"Dips assisted",s:"3×10",m:"triceps"},
+    {n:"Cable Pushdown V-bar",s:"3×12",m:"triceps"},
+  ],
+  Friday:[
+    {n:"Pull-up or Assisted",s:"4×max",m:"back"},
+    {n:"Lat Pulldown underhand",s:"3×10",m:"back"},
+    {n:"Single Arm DB Row",s:"3×10",m:"back"},
+    {n:"Seated Cable Row wide",s:"3×12",m:"back"},
+    {n:"Cable Crunch",s:"3×15",m:"core"},
+    {n:"Hanging Knee Raise",s:"3×12",m:"core"},
+    {n:"Plank",s:"2×60s",m:"core"},
+  ],
+  Saturday:[
+    {n:"Chest Press Machine",s:"2×12",m:"chest"},
+    {n:"Pec Deck",s:"2×15",m:"chest"},
+    {n:"Incline DB Curl",s:"3×12",m:"biceps"},
+    {n:"Cable + Hammer Curl superset",s:"3×10+10",m:"biceps"},
+    {n:"Preacher Curl machine",s:"2×10",m:"biceps"},
+    {n:"OHT Extension cable",s:"3×12",m:"triceps"},
+    {n:"Pushdown straight bar + dropset",s:"3×15",m:"triceps"},
+  ],
+};
+
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+function e1rm(w,r){
+  if(!w||!r) return "—";
+  return (parseFloat(w)*(1+parseFloat(r)/30)).toFixed(1)+" kg";
+}
+
+function athleteTarget(week, day){
+  const s = SMOLOV[week]?.[day];
+  if(!s) return null;
+  return currentAthlete==="josh" ? s.jp : s.rp;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ATHLETE SWITCH
+// ═══════════════════════════════════════════════════════════
+async function setAthlete(a) {
+  currentAthlete = a;
+  document.querySelectorAll(".athlete-btn").forEach(b => b.classList.remove("active"));
+  document.querySelector(`.athlete-btn.${a}`).classList.add("active");
+  const info = ATHLETES[a];
+  document.getElementById("athlete-label").textContent =
+    `${info.name} · ${info.pr}kg PR`;
+  document.documentElement.style.setProperty("--athlete-color", info.color);
+
+  // reload data then re-render current page
+  await dbFetch(a);
+  rerenderAll();
+  updateDashboard();
+}
+
+function rerenderAll(){
+  ["week1","week2","week3","deload","tracker"].forEach(id=>{
+    const el = document.getElementById(`page-${id}`);
+    if(el){ el.innerHTML=""; el.dataset.built=""; }
+  });
+  const active = document.querySelector(".page.active");
+  if(active && active.id !== "page-dashboard"){
+    const pageId = active.id.replace("page-","");
+    buildPage(pageId);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function updateDashboard(){
+  const info = ATHLETES[currentAthlete];
+  const targetPR = parseFloat(get("target-pr")) || (currentAthlete==="josh"?80:107);
+  const currentPR = parseFloat(get("pr-0")) || info.pr;
+
+  // count sessions
+  let sessions=0, bestE1rm=0;
+  const benchDays=["Monday","Wednesday","Friday","Saturday"];
+  for(const wk of ["week1","week2","week3"]){
+    for(const day of benchDays){
+      const w=parseFloat(get(`${wk}-${day}-bench-wt`));
+      const r=parseFloat(get(`${wk}-${day}-bench-reps`));
+      if(w&&r){sessions++;const v=w*(1+r/30);if(v>bestE1rm)bestE1rm=v;}
+    }
+  }
+
+  const progPct = Math.round((sessions/12)*100);
+  const benchPct = Math.min(100,Math.round(((currentPR-info.pr)/(targetPR-info.pr))*100));
+
+  document.getElementById("page-dashboard").innerHTML = `
+  <div class="hero">
+    <h1>SMOLOV<br><span>JR.</span></h1>
+    <p>4-week bench peaking block · ${info.name} · ${info.pr}kg starting PR</p>
+    <div class="target-edit-wrap">
+      <label>Target PR</label>
+      <input type="number" step="0.5" value="${targetPR}"
+        onchange="set('target-pr',this.value);updateDashboard()"
+        style="width:90px;font-family:'Bebas Neue',sans-serif;font-size:20px;
+        color:var(--athlete-color);text-align:center;border-color:var(--athlete-color);
+        background:var(--bg);border:1px solid;border-radius:3px;padding:6px 8px;">
+      <span style="font-size:11px;color:var(--muted)">kg</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Starting PR</div>
+      <div class="value">${info.pr} kg</div>
+      <div class="sub">Baseline</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Target PR</div>
+      <div class="value">${targetPR} kg</div>
+      <div class="sub">Editable above</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Sessions Done</div>
+      <div class="value" id="dash-sessions">${sessions}</div>
+      <div class="sub">of 12 total</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Best e1RM</div>
+      <div class="value">${bestE1rm>0?bestE1rm.toFixed(1)+" kg":"—"}</div>
+      <div class="sub">From logged sets</div>
+    </div>
+  </div>
+
+  <div class="prog-bar-wrap">
+    <div class="prog-bar-label"><span>PROGRAM COMPLETION</span><span>${progPct}%</span></div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width:${progPct}%"></div></div>
+  </div>
+  <div class="prog-bar-wrap">
+    <div class="prog-bar-label"><span>BENCH JOURNEY (${info.pr}→${targetPR}kg)</span>
+      <span>${benchPct}%</span></div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width:${benchPct}%"></div></div>
+  </div>
+
+  <div class="section-title">Program Schedule</div>
+  <div class="schedule-grid">
+    ${[
+      {wk:"Week 1",title:"BASE",
+       items:`Mon 6×6 @ ${currentAthlete==="josh"?45:62.5}kg<br>Wed 7×5 @ ${currentAthlete==="josh"?47.5:67.5}kg<br>Fri 8×4 @ ${currentAthlete==="josh"?52.5:72.5}kg<br>Sat 10×3 @ ${currentAthlete==="josh"?55:77.5}kg`},
+      {wk:"Week 2",title:"+2.5KG",
+       items:`Mon 6×6 @ ${currentAthlete==="josh"?47.5:65}kg<br>Wed 7×5 @ ${currentAthlete==="josh"?50:67.5}kg<br>Fri 8×4 @ ${currentAthlete==="josh"?55:72.5}kg<br>Sat 10×3 @ ${currentAthlete==="josh"?57.5:80}kg`},
+      {wk:"Week 3",title:"+5KG",
+       items:`Mon 6×6 @ ${currentAthlete==="josh"?50:67.5}kg<br>Wed 7×5 @ ${currentAthlete==="josh"?52.5:70}kg<br>Fri 8×4 @ ${currentAthlete==="josh"?57.5:75}kg<br><strong>Sat 10×3 @ ${currentAthlete==="josh"?60:80}kg</strong>`},
+      {wk:"Week 4",title:"DELOAD & TEST",
+       items:`Mon 3×3 @ ${currentAthlete==="josh"?50:67.5}kg<br>Wed 3×2 @ ${currentAthlete==="josh"?55:72.5}kg<br>Thu/Fri REST<br><strong>Sat 1RM TEST</strong>`},
+    ].map(c=>`<div class="sched-card">
+      <div class="sched-week">${c.wk}</div>
+      <div class="sched-title">${c.title}</div>
+      <div class="sched-items">${c.items}</div>
+    </div>`).join("")}
+  </div>
+
+  <div class="section-title" style="margin-top:24px">Key Rules</div>
+  <div class="note-grid">
+    <div class="note-card"><h4>Bench First</h4>
+      <p>Always the first exercise every session — completely fresh CNS.</p></div>
+    <div class="note-card green"><h4>90s Rest</h4>
+      <p>Exactly 90 seconds between all Smolov Jr. sets. Timer on, no exceptions.</p></div>
+    <div class="note-card accent"><h4>Face Pulls</h4>
+      <p>2×15 before every bench session. Shoulder health non-negotiable.</p></div>
+    <div class="note-card purple"><h4>Deload</h4>
+      <p>Week 4 is mandatory — don't skip it. This is where gains consolidate.</p></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEEK PAGES
+// ═══════════════════════════════════════════════════════════
+function buildWeekPage(weekKey){
+  const container = document.getElementById(`page-${weekKey}`);
+  if(!container || container.dataset.built) return;
+  container.dataset.built="1";
+
+  const wNum = weekKey.replace("week","");
+  let html = `<div class="hero" style="padding-top:16px">
+    <h1 style="font-size:clamp(32px,5vw,56px)">WEEK <span>${wNum}</span></h1>
+    <p>Log weights, reps and RPE · auto-saves to cloud</p>
+  </div>`;
+
+  for(const day of DAYS){
+    const acc = ACCESSORIES[day] || [];
+    const smolov = SMOLOV[weekKey]?.[day];
+    const isBenchDay = !!smolov;
+    const target = smolov ? (currentAthlete==="josh" ? smolov.jp : smolov.rp) : null;
+
+    html += `<div class="day-card">
+      <div class="day-header" onclick="toggleDay('${weekKey}-${day}')">
+        <h3 style="color:${isBenchDay?'var(--athlete-color)':'var(--text)'}">${day.toUpperCase()}</h3>
+        <span class="badge" style="background:${isBenchDay?'rgba(232,255,0,.12)':'rgba(255,255,255,.04)'};
+          color:${isBenchDay?'var(--athlete-color)':'var(--muted)'};
+          border:1px solid ${isBenchDay?'rgba(232,255,0,.25)':'var(--border)'}">
+          ${isBenchDay?"BENCH DAY":"ACCESSORY"}</span>
+      </div>
+      <div class="day-body" id="body-${weekKey}-${day}">`;
+
+    if(isBenchDay){
+      const wKey  = `${weekKey}-${day}-bench-wt`;
+      const rKey  = `${weekKey}-${day}-bench-reps`;
+      const peKey = `${weekKey}-${day}-bench-rpe`;
+      html += `<div class="smolov-box">
+        <div class="smolov-title">FLAT BENCH — ${smolov.s}</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px">
+          ${["TARGET","ACTUAL WT","REPS","RPE","e1RM"].map(l=>`<div class="input-label">${l}</div>`).join("")}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:center">
+          <div class="target-pill">${target} kg</div>
+          <input type="number" step="0.5" placeholder="kg" id="${wKey}"
+            value="${get(wKey)}"
+            onchange="set('${wKey}',this.value);updateE1rm('${weekKey}','${day}','bench')">
+          <input type="number" placeholder="reps" id="${rKey}"
+            value="${get(rKey)}"
+            onchange="set('${rKey}',this.value);updateE1rm('${weekKey}','${day}','bench')">
+          <input type="number" step="0.5" min="1" max="10" placeholder="RPE" id="${peKey}"
+            value="${get(peKey)}"
+            onchange="set('${peKey}',this.value)">
+          <div class="e1rm-pill" id="${weekKey}-${day}-bench-e1rm">
+            ${e1rm(get(wKey),get(rKey))}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    if(acc.length){
+      html += `<div class="acc-header">
+        <div>EXERCISE</div><div>SCHEME</div><div>WT / REPS</div><div>RPE</div><div>e1RM</div>
+      </div>`;
+      acc.forEach((ex,i)=>{
+        const mc = MUSCLE_COLORS[ex.m]||"var(--text)";
+        const wk2 = `${weekKey}-${day}-ex${i}-wt`;
+        const rk2 = `${weekKey}-${day}-ex${i}-reps`;
+        const pk2 = `${weekKey}-${day}-ex${i}-rpe`;
+        html += `<div class="acc-row">
+          <div class="ex-name" style="color:${mc}">${ex.n}</div>
+          <div style="font-size:11px;color:var(--muted)">${ex.s}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <input type="number" step="0.5" placeholder="kg" id="${wk2}"
+              value="${get(wk2)}"
+              onchange="set('${wk2}',this.value);updateE1rm('${weekKey}','${day}','ex${i}')">
+            <input type="number" placeholder="reps" id="${rk2}"
+              value="${get(rk2)}"
+              onchange="set('${rk2}',this.value);updateE1rm('${weekKey}','${day}','ex${i}')">
+          </div>
+          <input type="number" step="0.5" min="1" max="10" placeholder="RPE" id="${pk2}"
+            value="${get(pk2)}"
+            onchange="set('${pk2}',this.value)">
+          <div class="e1rm-pill" id="${weekKey}-${day}-ex${i}-e1rm" style="font-size:11px">
+            ${e1rm(get(wk2),get(rk2))}
+          </div>
+        </div>`;
+      });
+    }
+
+    html += `<button class="save-btn" onclick="saveDay('${weekKey}','${day}')">Save Session</button>
+      <span class="save-msg" id="msg-${weekKey}-${day}">✓ Saved to cloud</span>
+      </div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function toggleDay(id){
+  document.getElementById(`body-${id}`)?.classList.toggle("open");
+}
+
+function updateE1rm(week,day,prefix){
+  const wEl = document.getElementById(`${week}-${day}-${prefix}-wt`);
+  const rEl = document.getElementById(`${week}-${day}-${prefix}-reps`);
+  const eEl = document.getElementById(`${week}-${day}-${prefix}-e1rm`);
+  if(eEl) eEl.textContent = e1rm(wEl?.value, rEl?.value);
+  updateDashboard();
+}
+
+function saveDay(week,day){
+  const msg = document.getElementById(`msg-${week}-${day}`);
+  if(msg){msg.classList.add("show");setTimeout(()=>msg.classList.remove("show"),2500);}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DELOAD PAGE
+// ═══════════════════════════════════════════════════════════
+function buildDeloadPage(){
+  const container = document.getElementById("page-deload");
+  if(!container||container.dataset.built) return;
+  container.dataset.built="1";
+
+  const isJosh = currentAthlete==="josh";
+  container.innerHTML = `
+  <div class="hero" style="padding-top:16px">
+    <h1 style="font-size:clamp(32px,5vw,56px)">DELOAD &<br><span>PR TEST</span></h1>
+    <p>Week 4 — recover, then test your new 1RM</p>
+  </div>
+  <div class="schedule-grid">
+    <div class="sched-card">
+      <div class="sched-week">Monday</div>
+      <div class="sched-title">3×3</div>
+      <div class="sched-items">${isJosh?50:67.5}kg · groove only</div>
+    </div>
+    <div class="sched-card">
+      <div class="sched-week">Tuesday</div>
+      <div class="sched-title">LIGHT BACK</div>
+      <div class="sched-items">Pulldowns + curls<br>No deadlift</div>
+    </div>
+    <div class="sched-card">
+      <div class="sched-week">Wednesday</div>
+      <div class="sched-title">3×2</div>
+      <div class="sched-items">${isJosh?55:72.5}kg · last touch</div>
+    </div>
+    <div class="sched-card" style="border-top-color:var(--red)">
+      <div class="sched-week">Thu / Fri</div>
+      <div class="sched-title">FULL REST</div>
+      <div class="sched-items">Eat big, sleep 8+hrs<br>Visualise the lift</div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:20px">Saturday Warmup Protocol</div>
+  <div style="background:var(--surface);border-radius:6px;overflow:hidden;margin-top:10px">
+    ${[
+      ["Empty bar","×10","Groove"],
+      ["40 kg","×6",""],
+      ["50 kg","×4",""],
+      [isJosh?"57.5 kg":"72.5 kg","×2",""],
+      [isJosh?"62.5 kg":"85 kg","×1","Current PR feel — REST 5 mins"],
+      [isJosh?"67.5 kg":"92.5 kg","×1","First attempt"],
+      [isJosh?"72.5 kg":"97.5 kg","×1","Target"],
+      [isJosh?"77.5 kg":"102.5 kg","×1","Optimistic"],
+      [isJosh?"80 kg":"107 kg","×1","Best case goal"],
+    ].map(([wt,reps,note])=>{
+      const isAttempt = reps.includes("×1");
+      return `<div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;
+        padding:10px 18px;background:${isAttempt?'rgba(232,255,0,.04)':'var(--surface)'};
+        border-bottom:1px solid var(--border);align-items:center">
+        <div style="font-weight:${isAttempt?700:400};color:${isAttempt?'var(--athlete-color)':'var(--text)'};font-size:13px">${wt}</div>
+        <div style="font-size:12px;color:${isAttempt?'var(--athlete-color)':'var(--muted)'}">${reps}</div>
+        <div style="font-size:11px;color:var(--muted)">${note}</div>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="section-title" style="margin-top:20px">Log PR Test Result</div>
+  <div style="background:var(--surface);border-radius:6px;padding:20px;margin-top:10px;
+    border:1px solid var(--athlete-color)">
+    <div style="font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:10px">
+      NEW 1RM — ${ATHLETES[currentAthlete].name.toUpperCase()}
+    </div>
+    <input type="number" step="0.5" placeholder="Enter new PR in kg"
+      id="deload-pr-input"
+      value="${get('pr-1')}"
+      style="background:var(--bg);border:2px solid var(--athlete-color);
+      color:var(--athlete-color);font-family:'Bebas Neue',sans-serif;font-size:36px;
+      padding:12px 16px;border-radius:4px;width:200px;text-align:center"
+      onchange="set('pr-1',this.value);updateDashboard()">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted);margin-left:8px">kg</span>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PR TRACKER PAGE
+// ═══════════════════════════════════════════════════════════
+function buildTrackerPage(){
+  const container = document.getElementById("page-tracker");
+  if(!container||container.dataset.built) return;
+  container.dataset.built="1";
+
+  const info = ATHLETES[currentAthlete];
+  const milestones = [
+    "Pre-program baseline",
+    "Post Block 1",
+    "Post Block 2",
+    "Post Block 3",
+    "Post Block 4",
+  ];
+
+  let rows = milestones.map((label,i)=>{
+    const val = i===0 ? (get(`pr-${i}`) || info.pr) : (get(`pr-${i}`) || "");
+    return {label, val, i};
+  });
+
+  container.innerHTML = `
+  <div class="hero" style="padding-top:16px">
+    <h1 style="font-size:clamp(32px,5vw,56px)">PR <span>TRACKER</span></h1>
+    <p>${info.name} · log new PRs after each deload test</p>
+  </div>
+  <table class="pr-table">
+    <thead><tr>
+      <th style="text-align:left">Milestone</th>
+      <th>1RM</th>
+      <th>Change</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(({label,val,i})=>`
+      <tr>
+        <td style="text-align:left;font-weight:500;color:var(--muted);font-size:12px">${label}</td>
+        <td>
+          <input type="number" step="0.5" value="${val}" placeholder="kg"
+            id="pr-input-${i}"
+            style="background:var(--bg);border:1px solid var(--athlete-color);
+            color:var(--athlete-color);font-weight:700;font-size:15px;
+            padding:6px;border-radius:3px;width:80px;text-align:center;font-family:'DM Sans',sans-serif;"
+            onchange="set('pr-${i}',this.value);rebuildTracker()">
+        </td>
+        <td id="pr-diff-${i}" style="color:var(--green);font-weight:700;font-size:13px">
+          ${i===0?"—":"—"}
+        </td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+
+  updatePRDiffs();
+}
+
+function rebuildTracker(){
+  const container = document.getElementById("page-tracker");
+  if(container){ container.innerHTML=""; container.dataset.built=""; }
+  buildTrackerPage();
+  updateDashboard();
+}
+
+function updatePRDiffs(){
+  for(let i=1;i<5;i++){
+    const curr = parseFloat(document.getElementById(`pr-input-${i}`)?.value);
+    const prev = parseFloat(document.getElementById(`pr-input-${i-1}`)?.value);
+    const el   = document.getElementById(`pr-diff-${i}`);
+    if(!el) continue;
+    if(curr && prev){
+      const diff = (curr-prev).toFixed(1);
+      el.textContent = diff>0 ? `+${diff} kg` : `${diff} kg`;
+      el.style.color = diff>0 ? "var(--green)" : "var(--red)";
+    } else {
+      el.textContent="—";
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PAGE ROUTING
+// ═══════════════════════════════════════════════════════════
+function buildPage(id){
+  if(id==="week1"||id==="week2"||id==="week3") buildWeekPage(id);
+  if(id==="deload") buildDeloadPage();
+  if(id==="tracker") buildTrackerPage();
+}
+
+function showPage(id, evt){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById(`page-${id}`)?.classList.add("active");
+  if(evt) evt.target.classList.add("active");
+  buildPage(id);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+(async()=>{
+  await dbFetch("josh");
+  await dbFetch("ross");
+  updateDashboard();
+})();
+</script>
+</body>
+</html>
