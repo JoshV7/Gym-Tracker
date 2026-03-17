@@ -254,9 +254,18 @@ input:focus{outline:none;border-color:var(--accent);}
     </div>
     <div class="pin-error" id="pin-error"></div>
     <div class="pin-pad">
-      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`
-        <button class="pin-key${k==='⌫'?' del':''}" onclick="pinKey('${k}')">${k}</button>
-      `).join('')}
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="pinKey('')"></button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key del" onclick="pinKey('⌫')">⌫</button>
     </div>
     <div class="modal-btns" style="margin-top:16px">
       <button class="modal-btn secondary" onclick="closePinModal()">Cancel</button>
