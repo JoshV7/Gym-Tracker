@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gym Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root{
@@ -291,13 +292,148 @@ select{cursor:pointer;}
   border-radius:10px;background:rgba(232,255,0,.15);color:var(--ac);
   border:1px solid rgba(232,255,0,.3);}
 
-@media(max-width:480px){
-  .body-wrap{grid-template-columns:1fr;}
-  .stats{grid-template-columns:repeat(2,1fr);}
-}
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.login-box{width:min(380px,100%);background:var(--sf);border-radius:8px;
+  padding:28px;border:1px solid var(--bd);}
+.login-logo{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:.9;
+  margin-bottom:6px;}
+.login-logo span{color:var(--ac);}
+.login-sub{font-size:11px;color:var(--mu);margin-bottom:22px;}
+.login-field{margin-bottom:10px;}
+.login-field label{font-size:8px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mu);display:block;margin-bottom:3px;}
+.login-field input{width:100%;background:var(--bg);border:1px solid var(--bd);
+  border-radius:4px;color:var(--tx);padding:9px 10px;font-size:13px;
+  font-family:'DM Sans',sans-serif;transition:.2s;}
+.login-field input:focus{outline:none;border-color:var(--ac);}
+.login-btn{width:100%;padding:10px;border-radius:4px;font-size:11px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:none;
+  transition:.2s;margin-bottom:8px;}
+.login-btn.pri{background:var(--ac);color:#000;}
+.login-btn.pri:hover{opacity:.85;}
+.login-btn.sec{background:transparent;border:1px solid var(--bd);color:var(--mu);}
+.login-btn.sec:hover{border-color:var(--tx);color:var(--tx);}
+.login-btn.google{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);
+  display:flex;align-items:center;justify-content:center;gap:8px;}
+.login-btn.google:hover{border-color:var(--tx);}
+.login-divider{display:flex;align-items:center;gap:8px;margin:10px 0;
+  font-size:10px;color:var(--mu);}
+.login-divider::before,.login-divider::after{content:"";flex:1;
+  height:1px;background:var(--bd);}
+.login-err{font-size:11px;color:var(--red);min-height:16px;margin-bottom:6px;text-align:center;}
+.login-switch{font-size:11px;color:var(--mu);text-align:center;margin-top:10px;}
+.login-switch span{color:var(--ac);cursor:pointer;text-decoration:underline;}
+.login-reset{font-size:10px;color:var(--mu);text-align:center;margin-top:6px;cursor:pointer;}
+.login-reset:hover{color:var(--tx);}
+#app{display:none;}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">GYM<br><span>TRACKER</span></div>
+    <p class="login-sub">Sign in to access your data</p>
+    <div class="login-err" id="login-err"></div>
+
+    <div id="login-form">
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') signIn()">
+      </div>
+      <button class="login-btn pri" onclick="signIn()">Sign In</button>
+      <button class="login-btn sec" onclick="showSignUp()">Create Account</button>
+      <div class="login-divider">or</div>
+      <button class="login-btn google" onclick="signInGoogle()">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+      <p class="login-reset" onclick="showReset()">Forgot password?</p>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="login-field">
+        <label>Username <span id="uname-status" style="float:right;font-size:10px"></span></label>
+        <input type="text" id="signup-name" placeholder="e.g. josh" maxlength="20"
+          oninput="checkUsername(this.value)"
+          style="text-transform:lowercase">
+        <div style="font-size:10px;color:var(--mu);margin-top:3px">Letters, numbers, underscores only. Shown to nobody else.</div>
+      </div>
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label>Password (min 6 chars)</label>
+        <input type="password" id="signup-password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="login-field">
+        <label>Bench PR (kg)</label>
+        <input type="number" id="signup-pr" step="0.5" placeholder="e.g. 65">
+      </div>
+      <div class="login-field">
+        <label>4-Digit PIN <span style="color:var(--mu);font-size:9px">(protects your data on shared devices)</span></label>
+        <div style="display:flex;gap:6px;margin-top:3px">
+          <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
+            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+          <input type="password" id="signup-pin2" inputmode="numeric" maxlength="4"
+            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+        </div>
+        <div style="font-size:10px;color:var(--mu);margin-top:3px">Enter PIN twice to confirm. You can skip PIN — tap Create Account without filling these.</div>
+      </div>
+      <button class="login-btn pri" onclick="signUp()">Create Account</button>
+      <button class="login-btn sec" onclick="showLogin()">Back to Sign In</button>
+    </div>
+
+    <div id="reset-form" style="display:none">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:12px">
+        Enter your email and we'll send a reset link.
+      </p>
+      <div class="login-field">
+        <label>Email</label>
+        <input type="email" id="reset-email" placeholder="you@example.com">
+      </div>
+      <button class="login-btn pri" onclick="sendReset()">Send Reset Link</button>
+      <button class="login-btn sec" onclick="showLogin()">Back</button>
+    </div>
+
+    <div id="profile-form" style="display:none">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:14px">
+        One more step — choose a username and optional PIN.
+      </p>
+      <div class="login-field">
+        <label>Username <span id="uname-status2" style="float:right;font-size:10px"></span></label>
+        <input type="text" id="profile-name" placeholder="e.g. josh" maxlength="20"
+          oninput="checkUsername2(this.value)" style="text-transform:lowercase">
+      </div>
+      <div class="login-field">
+        <label>Bench PR (kg)</label>
+        <input type="number" id="profile-pr" step="0.5" placeholder="e.g. 65">
+      </div>
+      <div class="login-field">
+        <label>4-Digit PIN <span style="color:var(--mu);font-size:9px">(optional)</span></label>
+        <div style="display:flex;gap:6px;margin-top:3px">
+          <input type="password" id="profile-pin" inputmode="numeric" maxlength="4"
+            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+          <input type="password" id="profile-pin2" inputmode="numeric" maxlength="4"
+            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+        </div>
+      </div>
+      <button class="login-btn pri" onclick="completeProfile()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP (hidden until logged in) -->
+<div id="app">
 
 <div class="offline-banner" id="offline-banner">⚠ Offline — changes saved locally and will sync when reconnected</div>
 
@@ -433,10 +569,235 @@ select{cursor:pointer;}
 // ══════════════════════════════════════════════════════
 const SB_URL = "https://sorzrdphywjzyrgelgvs.supabase.co";
 const SB_KEY = "sb_publishable_kDrH6TN4OHnOoyf1zufX7g_KagChtzn";
-const HDR = {"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"};
+const HDR = {"apikey":SB_KEY,"Content-Type":"application/json"};
 const PRESETS = ["#e8ff00","#00e5ff","#ff4d00","#b47cff","#00ff9d","#ff9d00","#ff4d8b","#60a5fa","#f472b6","#fff"];
 const DEFAULT_ATHLETES = [{id:"josh",name:"Josh",pr:65,colour:"#e8ff00"},{id:"ross",name:"Ross",pr:90,colour:"#00e5ff"}];
 const WEEK_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+// Supabase JS client — handles JWT automatically for RLS
+const _sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// ══════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════
+function loginErr(msg){document.getElementById("login-err").textContent=msg||"";}
+
+function showLogin(){
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="login-form"?"":"none";
+  });
+  loginErr();
+}
+function showSignUp(){
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="signup-form"?"":"none";
+  });
+  loginErr();
+}
+function showReset(){
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="reset-form"?"":"none";
+  });
+  loginErr();
+}
+function showProfileForm(){
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="profile-form"?"":"none";
+  });
+  loginErr();
+}
+
+// ── Username availability ──────────────────────────────
+let unameTimer=null;
+function checkUsername(val){
+  const el=document.getElementById("uname-status");
+  val=val.toLowerCase().replace(/[^a-z0-9_]/g,"");
+  document.getElementById("signup-name").value=val;
+  if(val.length<2){el.textContent="";return;}
+  el.textContent="checking…";el.style.color="var(--mu)";
+  clearTimeout(unameTimer);
+  unameTimer=setTimeout(()=>_checkUname(val,el),500);
+}
+function checkUsername2(val){
+  const el=document.getElementById("uname-status2");
+  val=val.toLowerCase().replace(/[^a-z0-9_]/g,"");
+  document.getElementById("profile-name").value=val;
+  if(val.length<2){el.textContent="";return;}
+  el.textContent="checking…";el.style.color="var(--mu)";
+  clearTimeout(unameTimer);
+  unameTimer=setTimeout(()=>_checkUname(val,el),500);
+}
+async function _checkUname(val,el){
+  try{
+    const {data,error}=await _sb.from("usernames").select("username").eq("username",val).maybeSingle();
+    if(error) throw error;
+    if(data){el.textContent="✗ taken";el.style.color="var(--red)";}
+    else{el.textContent="✓ available";el.style.color="var(--gn)";}
+  }catch{el.textContent="";} 
+}
+
+// ── Claim username in DB ────────────────────────────────
+async function claimUsername(username,userId){
+  const {error}=await _sb.from("usernames").insert({username,user_id:userId});
+  if(error) throw new Error("Username already taken — choose another.");
+}
+
+// ── Release old username ────────────────────────────────
+async function releaseUsername(userId){
+  await _sb.from("usernames").delete().eq("user_id",userId);
+}
+
+// ── Get username for user ───────────────────────────────
+async function getUsername(userId){
+  const {data}=await _sb.from("usernames").select("username").eq("user_id",userId).maybeSingle();
+  return data?.username||null;
+}
+
+// ── Sign in ─────────────────────────────────────────────
+async function signIn(){
+  loginErr();
+  const email=document.getElementById("login-email").value.trim();
+  const password=document.getElementById("login-password").value;
+  if(!email||!password){loginErr("Enter email and password.");return;}
+  const {error}=await _sb.auth.signInWithPassword({email,password});
+  if(error){
+    // Detect Google-linked account collision
+    if(error.message.toLowerCase().includes("already registered")||
+       error.message.toLowerCase().includes("provider")){
+      loginErr("This email is linked to Google — tap 'Continue with Google' instead.");
+    } else {
+      loginErr(error.message);
+    }
+  }
+}
+
+// ── Sign up ─────────────────────────────────────────────
+async function signUp(){
+  loginErr();
+  const username=document.getElementById("signup-name").value.trim().toLowerCase();
+  const email=document.getElementById("signup-email").value.trim();
+  const password=document.getElementById("signup-password").value;
+  const pr=parseFloat(document.getElementById("signup-pr").value)||60;
+  const pin=document.getElementById("signup-pin").value;
+  const pin2=document.getElementById("signup-pin2").value;
+
+  if(!username||!email||!password){loginErr("Fill in username, email and password.");return;}
+  if(!/^[a-z0-9_]+$/.test(username)){loginErr("Username: letters, numbers, underscores only.");return;}
+  if(username.length<2){loginErr("Username must be at least 2 characters.");return;}
+  if(password.length<6){loginErr("Password must be at least 6 characters.");return;}
+  if(pin&&pin!==pin2){loginErr("PINs don't match.");return;}
+  if(pin&&(pin.length!==4||!/^\d+$/.test(pin))){loginErr("PIN must be exactly 4 digits.");return;}
+
+  // Check username availability one more time before committing
+  const status=document.getElementById("uname-status").textContent;
+  if(status==="✗ taken"){loginErr("That username is taken — choose another.");return;}
+
+  const {data,error}=await _sb.auth.signUp({
+    email,password,
+    options:{data:{display_name:username,pr,colour:PRESETS[0],pin:pin||null}}
+  });
+  if(error){
+    if(error.message.toLowerCase().includes("already registered")){
+      loginErr("This email is already registered. Try signing in, or use Google.");
+    } else {
+      loginErr(error.message);
+    }
+    return;
+  }
+
+  // Claim username in DB (user is now signed in)
+  if(data.user){
+    try{
+      await claimUsername(username,data.user.id);
+    }catch(e){
+      loginErr(e.message);
+      // Roll back — delete the auth user isn't possible from client, but username won't be claimed
+      return;
+    }
+  }
+  loginErr("Account created — signing you in…");
+}
+
+// ── Google sign in ──────────────────────────────────────
+async function signInGoogle(){
+  loginErr();
+  const {error}=await _sb.auth.signInWithOAuth({
+    provider:"google",
+    options:{redirectTo:window.location.href}
+  });
+  if(error) loginErr(error.message);
+}
+
+// ── Complete profile (Google users on first login) ──────
+async function completeProfile(){
+  loginErr();
+  const username=document.getElementById("profile-name").value.trim().toLowerCase();
+  const pr=parseFloat(document.getElementById("profile-pr").value)||60;
+  const pin=document.getElementById("profile-pin").value;
+  const pin2=document.getElementById("profile-pin2").value;
+
+  if(!username){loginErr("Choose a username.");return;}
+  if(!/^[a-z0-9_]+$/.test(username)){loginErr("Letters, numbers, underscores only.");return;}
+  if(username.length<2){loginErr("Username must be at least 2 characters.");return;}
+  if(pin&&pin!==pin2){loginErr("PINs don't match.");return;}
+  if(pin&&(pin.length!==4||!/^\d+$/.test(pin))){loginErr("PIN must be exactly 4 digits.");return;}
+
+  const status=document.getElementById("uname-status2").textContent;
+  if(status==="✗ taken"){loginErr("That username is taken — choose another.");return;}
+
+  const {data:{user}}=await _sb.auth.getUser();
+  if(!user) return;
+
+  try{await claimUsername(username,user.id);}
+  catch(e){loginErr(e.message);return;}
+
+  const {error}=await _sb.auth.updateUser({
+    data:{display_name:username,pr,colour:PRESETS[0],pin:pin||null,profile_complete:true}
+  });
+  if(error){loginErr(error.message);return;}
+
+  // Refresh session and boot
+  const {data:{session}}=await _sb.auth.getSession();
+  if(session) bootApp(session);
+}
+
+// ── Reset password ──────────────────────────────────────
+async function sendReset(){
+  loginErr();
+  const email=document.getElementById("reset-email").value.trim();
+  if(!email){loginErr("Enter your email.");return;}
+  const {error}=await _sb.auth.resetPasswordForEmail(email,{
+    redirectTo:window.location.href
+  });
+  if(error) loginErr(error.message);
+  else loginErr("Reset link sent — check your email.");
+}
+
+// ── Sign out ────────────────────────────────────────────
+async function signOut(){
+  await _sb.auth.signOut();
+  location.reload();
+}
+
+// ── Change username (from dashboard) ───────────────────
+async function changeUsername(){
+  const newName=prompt("New username (letters, numbers, underscores):");
+  if(!newName) return;
+  const clean=newName.trim().toLowerCase().replace(/[^a-z0-9_]/g,"");
+  if(clean.length<2){alert("Too short.");return;}
+  // Check availability
+  const {data}=await _sb.from("usernames").select("username").eq("username",clean).maybeSingle();
+  if(data){alert("That username is taken.");return;}
+  // Swap
+  const {data:{user}}=await _sb.auth.getUser();
+  await releaseUsername(user.id);
+  try{await claimUsername(clean,user.id);}
+  catch(e){alert(e.message);return;}
+  await _sb.auth.updateUser({data:{display_name:clean}});
+  // Update local athlete name
+  const a=ca();if(a){a.name=clean;renderChips();updateDash();}
+  alert("Username updated to: "+clean);
+}
 
 // ══════════════════════════════════════════════════════
 //  EXERCISE DATABASE (150+)
@@ -771,8 +1132,13 @@ function ss(state,txt){
 }
 
 async function sbReq(table,method,payload,matchKey){
+  // Always use the current session JWT so RLS policies work
+  const {data:{session}}=await _sb.auth.getSession();
+  const token=session?.access_token||SB_KEY;
+  const headers={...HDR,"Authorization":"Bearer "+token};
+
   let url=`${SB_URL}/rest/v1/${table}`;
-  const opts={method,headers:{...HDR}};
+  const opts={method,headers};
   if(method==="GET"){
     if(matchKey) url+=`?${matchKey}`;
   } else if(method==="POST"){
@@ -938,7 +1304,11 @@ function submitPin(){
   const{mode,id,cb}=pendingPin||{};
   if(mode==="set"){
     if(!db[id]) db[id]={};
-    db[id]["__pin__"]=pinBuf;dbSave(id);unlock(id);closeModal("mo-pin");if(cb)cb();
+    db[id]["__pin__"]=pinBuf;
+    dbSave(id);
+    // Also persist PIN in Supabase user metadata so it survives on other devices
+    _sb.auth.updateUser({data:{pin:pinBuf}}).catch(()=>{});
+    unlock(id);closeModal("mo-pin");if(cb)cb();
   } else {
     if(pinBuf===db[id]?.["__pin__"]){unlock(id);closeModal("mo-pin");if(cb)cb();}
     else{document.getElementById("pin-err").textContent="Incorrect PIN";pinBuf="";updateDots();}
@@ -1387,6 +1757,15 @@ function updateDash(){
   </div>
 
   <div style="background:var(--sf);border-radius:5px;padding:12px;margin-top:9px">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:7px">Account</div>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
+      Signed in as <strong style="color:var(--tx)">${a.name}</strong>
+    </p>
+    <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+      onclick="changeUsername()">Change Username</button>
+  </div>
+
+  <div style="background:var(--sf);border-radius:5px;padding:12px;margin-top:9px">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:7px">PIN Protection</div>
     <p style="font-size:11px;color:var(--mu);margin-bottom:7px">
       ${pinSet?"PIN set.":"No PIN — set one to protect data."}
@@ -1395,7 +1774,7 @@ function updateDash(){
       ?`<button class="save-btn" style="margin-top:0;margin-right:5px"
           onclick="requirePin('${currentId}',()=>openPin('set','${currentId}',()=>updateDash()))">Change PIN</button>
         <button class="save-btn" style="margin-top:0;background:var(--red)"
-          onclick="requirePin('${currentId}',()=>{db['${currentId}']['__pin__']=null;dbSave('${currentId}');updateDash();})">Remove PIN</button>`
+          onclick="requirePin('${currentId}',()=>{db['${currentId}']['__pin__']=null;dbSave('${currentId}');_sb.auth.updateUser({data:{pin:null}});updateDash();})">Remove PIN</button>`
       :`<button class="save-btn" style="margin-top:0" onclick="openPin('set','${currentId}',()=>updateDash())">Set PIN</button>`}
   </div>`;
 
@@ -2635,173 +3014,74 @@ function resetPrivacy(){
 }
 
 // ══════════════════════════════════════════════════════
-//  V3 → V5 DATA MIGRATION
-//  Reads old v3 flat keys (week1-Monday-bench-wt etc)
-//  and migrates them into the new program key format.
-//  Runs once per athlete, marks completion in db.
+//  INIT — driven by Supabase auth session
 // ══════════════════════════════════════════════════════
-
-// Old v3 day structure for Smolov Jr (Mon start)
-const V3_DAYS={
-  week1:{Monday:"6×6",Wednesday:"7×5",Friday:"8×4",Saturday:"10×3"},
-  week2:{Monday:"6×6",Wednesday:"7×5",Friday:"8×4",Saturday:"10×3"},
-  week3:{Monday:"6×6",Wednesday:"7×5",Friday:"8×4",Saturday:"10×3"},
-  deload:{Monday:"3×3",Wednesday:"3×2"},
-};
-
-// Old v3 exercise list per day (matches v3 ACC_JOSH)
-const V3_ACC={
-  Monday:["Pec Deck","Skull Crushers EZ Bar","Tricep Pushdown rope","OHT Extension cable"],
-  Tuesday:["Deadlift","Pendlay Row","Lat Pulldown wide grip","Cable Row close grip",
-    "Rear Delt Reverse Fly","Face Pull rope","EZ Bar Curl","Incline Dumbbell Curl","Hammer Curl"],
-  Wednesday:["Barbell Squat","Romanian Deadlift","Leg Press","Hip Thrust barbell",
-    "Leg Curl machine","Leg Extension machine","Calf Raise standing"],
-  Thursday:["Barbell OHP","Cable Lateral Raise","Face Pull rope","Rear Delt Reverse Fly",
-    "Preacher Curl","Cable Curl single arm","Dips assisted","Cable Pushdown V-bar"],
-  Friday:["Pull-up or Assisted","Lat Pulldown underhand","Single Arm DB Row",
-    "Seated Cable Row wide","Cable Crunch","Hanging Knee Raise","Plank"],
-  Saturday:["Chest Press Machine","Pec Deck","Incline DB Curl",
-    "Cable + Hammer Curl superset","Preacher Curl machine","OHT Extension cable",
-    "Pushdown straight bar + dropset"],
-  Sunday:[],
-};
-
-async function migrateV3Data(athleteId){
-  const data=db[athleteId]||{};
-  const progId=athleteId+"-smolov-legacy";
-
-  // If already migrated AND program exists in programs table — skip entirely
-  if(db[athleteId]?.["__v3_migrated__"]){
-    const already=(programs[athleteId]||[]).find(p=>p.id===progId);
-    if(already) return; // fully done
-    // Migration ran but program wasn't saved to programs table — re-add it
-    const tmpl=PROG_TEMPLATES["Smolov Jr."];
-    const prog={
-      id:progId,athlete:athleteId,name:"Smolov Jr.",
-      notes:"Migrated from previous version",
-      template:"Smolov Jr.",weeks:4,is_primary:!(programs[athleteId]||[]).length,
-      is_archived:false,
-      data:{days:JSON.parse(JSON.stringify(tmpl.days))},
-      created_at:new Date().toISOString()
-    };
-    if(!programs[athleteId]) programs[athleteId]=[];
-    programs[athleteId].push(prog);
-    await progSave(prog);
-    console.log("Re-saved Smolov Jr program for",athleteId);
-    return;
-  }
-
-  const hasV3Data=Object.keys(data).some(k=>
-    k.startsWith("week1-")||k.startsWith("week2-")||
-    k.startsWith("week3-")||k.startsWith("deload-"));
-  if(!hasV3Data){
-    // No old data — just mark done
-    if(!db[athleteId]) db[athleteId]={};
-    db[athleteId]["__v3_migrated__"]="1";
-    await dbSave(athleteId);
-    return;
-  }
-
-  console.log("Migrating v3 data for",athleteId);
-  const tmpl=PROG_TEMPLATES["Smolov Jr."];
-  const prog={
-    id:progId,athlete:athleteId,name:"Smolov Jr.",
-    notes:"Migrated from previous version",
-    template:"Smolov Jr.",weeks:4,is_primary:true,is_archived:false,
-    data:{days:JSON.parse(JSON.stringify(tmpl.days))},
-    created_at:new Date().toISOString()
-  };
-
-  // Week mapping: v3 week names → week indices
-  const wkMap={week1:0,week2:1,week3:2,deload:3};
-
-  // Migrate bench sets (v3 stored as single wt/reps per bench day)
-  Object.entries(wkMap).forEach(([wkName,wi])=>{
-    ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].forEach(day=>{
-      // Migrate bench
-      const benchWt=data[`${wkName}-${day}-bench-wt`];
-      const benchReps=data[`${wkName}-${day}-bench-reps`];
-      const benchRpe=data[`${wkName}-${day}-bench-rpe`];
-      if(benchWt||benchReps){
-        // Find bench exercise index (always 0 in Smolov days)
-        data[`p${progId}-w${wi}-${day}-ex0-sets`]="1";
-        data[`p${progId}-w${wi}-${day}-ex0-s0-wt`]=benchWt||"";
-        data[`p${progId}-w${wi}-${day}-ex0-s0-reps`]=benchReps||"";
-        data[`p${progId}-w${wi}-${day}-ex0-s0-rpe`]=benchRpe||"";
-      }
-
-      // Migrate accessories
-      const accList=V3_ACC[day]||[];
-      accList.forEach((exName,exIdx)=>{
-        // v3 accessories were stored as ex0,ex1 etc (offset by 1 for bench days)
-        const v3ExIdx=V3_DAYS[wkName]?.[day]?exIdx+1:exIdx; // bench days: accessories start at ex1
-        const wt=data[`${wkName}-${day}-ex${v3ExIdx}-wt`];
-        const rps=data[`${wkName}-${day}-ex${v3ExIdx}-reps`];
-        const rpe=data[`${wkName}-${day}-ex${v3ExIdx}-rpe`];
-        if(wt||rps){
-          // In new format, bench is ex0, accessories follow
-          const newExIdx=V3_DAYS[wkName]?.[day]?exIdx+1:exIdx;
-          data[`p${progId}-w${wi}-${day}-ex${newExIdx}-sets`]="1";
-          data[`p${progId}-w${wi}-${day}-ex${newExIdx}-s0-wt`]=wt||"";
-          data[`p${progId}-w${wi}-${day}-ex${newExIdx}-s0-reps`]=rps||"";
-          data[`p${progId}-w${wi}-${day}-ex${newExIdx}-s0-rpe`]=rpe||"";
-        }
-      });
-
-      // Migrate session notes
-      const notes=data[`${wkName}-${day}-notes`];
-      if(notes) data[`p${progId}-w${wi}-${day}-notes`]=notes;
-
-      // Migrate done flag
-      const done=data[`trained-${wkName}-${day}`]||data[`p${progId}-w${wi}-${day}-done`];
-      if(done) data[`p${progId}-w${wi}-${day}-done`]="1";
-    });
-  });
-
-  // Write migrated data back
-  db[athleteId]=data;
-  db[athleteId]["__v3_migrated__"]="1";
-
-  // Save program to programs table
-  if(!programs[athleteId]) programs[athleteId]=[];
-  // Only add if not already there
-  if(!programs[athleteId].find(p=>p.id===progId)){
-    programs[athleteId].push(prog);
-    await progSave(prog);
-  }
-
-  // Save migrated db
-  await dbSave(athleteId);
-  console.log("Migration complete for",athleteId);
-}
-
-// ══════════════════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════════════════
-async function ensureDefaultPrograms(){
-  for(const a of athletes){
-    // Run migration first — converts v3 flat keys into program entries
-    await migrateV3Data(a.id);
-    // No auto-creation of blank programs — user creates their own
-  }
-}
-
-(async()=>{
+async function bootApp(session){
   try{offlineQueue=JSON.parse(localStorage.getItem("gym_queue")||"[]");}catch{}
 
-  const loaded=await metaLoad();
-  if(!loaded) athletes=[...DEFAULT_ATHLETES];
-  currentId=athletes[0].id;
-  await Promise.all([dbFetch(currentId),bwFetch(currentId),progFetch(currentId)]);
-  athletes.slice(1).forEach(a=>{dbFetch(a.id);progFetch(a.id);bwFetch(a.id);});
+  const user=session.user;
+  const meta=user.user_metadata||{};
+  const isGoogle=user.app_metadata?.provider==="google";
 
-  await ensureDefaultPrograms();
+  // Google users who haven't set a username yet — show profile form
+  if(isGoogle&&!meta.profile_complete){
+    document.getElementById("login-screen").style.display="flex";
+    document.getElementById("app").style.display="none";
+    showProfileForm();
+    return;
+  }
+
+  // Build single-athlete entry from logged-in user
+  const userAthlete={
+    id:user.id,
+    name:meta.display_name||user.email.split("@")[0],
+    pr:parseFloat(meta.pr)||60,
+    colour:meta.colour||PRESETS[0]
+  };
+  athletes=[userAthlete];
+  currentId=user.id;
+
+  // Load PIN from user metadata into db so existing PIN logic works
+  if(!db[currentId]) db[currentId]={};
+  if(meta.pin) db[currentId]["__pin__"]=meta.pin;
+
+  // Load data
+  await Promise.all([dbFetch(currentId),bwFetch(currentId),progFetch(currentId)]);
+
+  // If PIN is in metadata, make sure it's reflected in db
+  if(meta.pin&&!db[currentId]["__pin__"]) db[currentId]["__pin__"]=meta.pin;
+
+  // Show app, hide login
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("app").style.display="block";
+
+  // Add sign-out button to topbar if not already there
+  if(!document.getElementById("signout-btn")){
+    const btn=document.createElement("button");
+    btn.id="signout-btn";
+    btn.className="icon-btn";
+    btn.textContent="Sign Out";
+    btn.onclick=signOut;
+    document.querySelector(".tb-right").prepend(btn);
+  }
 
   applyAccent(accent());applyTheme();renderChips();buildProgNav();updateDash();updateStreak();
   renderSwatches("new-swatches",newColour,c=>newColour=c);
   buildTemplateGrid();
   if(isOnline) flushQueue();
-})();
+}
+
+// Auth state listener — fires on page load and on sign-in/out
+_sb.auth.onAuthStateChange((event,session)=>{
+  if(session){
+    bootApp(session);
+  } else {
+    // Not logged in — show login screen
+    document.getElementById("login-screen").style.display="flex";
+    document.getElementById("app").style.display="none";
+  }
+});
 </script>
+</div><!-- #app -->
 </body>
 </html>
