@@ -365,7 +365,7 @@ select{cursor:pointer;}
         <input type="text" id="signup-name" placeholder="e.g. josh" maxlength="20"
           oninput="checkUsername(this.value)"
           style="text-transform:lowercase">
-        <div style="font-size:10px;color:var(--mu);margin-top:3px">Letters, numbers, underscores only. Shown to nobody else.</div>
+        <div style="font-size:10px;color:var(--mu);margin-top:3px">Letters, numbers, underscores only.</div>
       </div>
       <div class="login-field">
         <label>Email</label>
@@ -375,19 +375,39 @@ select{cursor:pointer;}
         <label>Password (min 6 chars)</label>
         <input type="password" id="signup-password" placeholder="••••••••" autocomplete="new-password">
       </div>
-      <div class="login-field">
-        <label>Bench PR (kg)</label>
-        <input type="number" id="signup-pr" step="0.5" placeholder="e.g. 65">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Bench PR (kg)</label>
+          <input type="number" id="signup-pr-bench" step="0.5" placeholder="e.g. 65">
+        </div>
+        <div class="login-field">
+          <label>Squat PR (kg)</label>
+          <input type="number" id="signup-pr-squat" step="0.5" placeholder="e.g. 100">
+        </div>
+        <div class="login-field">
+          <label>Deadlift PR (kg)</label>
+          <input type="number" id="signup-pr-dl" step="0.5" placeholder="e.g. 120">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Height (cm)</label>
+          <input type="number" id="signup-height" step="1" placeholder="e.g. 183">
+        </div>
+        <div class="login-field">
+          <label>Weight (kg)</label>
+          <input type="number" id="signup-weight" step="0.5" placeholder="e.g. 78.8">
+        </div>
       </div>
       <div class="login-field">
-        <label>4-Digit PIN <span style="color:var(--mu);font-size:9px">(protects your data on shared devices)</span></label>
+        <label>4-Digit PIN</label>
         <div style="display:flex;gap:6px;margin-top:3px">
           <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
             placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
           <input type="password" id="signup-pin2" inputmode="numeric" maxlength="4"
             placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
         </div>
-        <div style="font-size:10px;color:var(--mu);margin-top:3px">Enter PIN twice to confirm. You can skip PIN — tap Create Account without filling these.</div>
+        <div style="font-size:10px;color:var(--mu);margin-top:3px">Enter twice to confirm. Optional — leave blank to skip.</div>
       </div>
       <button class="login-btn pri" onclick="signUp()">Create Account</button>
       <button class="login-btn sec" onclick="showLogin()">Back to Sign In</button>
@@ -407,16 +427,36 @@ select{cursor:pointer;}
 
     <div id="profile-form" style="display:none">
       <p style="font-size:12px;color:var(--mu);margin-bottom:14px">
-        One more step — choose a username and optional PIN.
+        One more step — choose a username and fill in your stats.
       </p>
       <div class="login-field">
         <label>Username <span id="uname-status2" style="float:right;font-size:10px"></span></label>
         <input type="text" id="profile-name" placeholder="e.g. josh" maxlength="20"
           oninput="checkUsername2(this.value)" style="text-transform:lowercase">
       </div>
-      <div class="login-field">
-        <label>Bench PR (kg)</label>
-        <input type="number" id="profile-pr" step="0.5" placeholder="e.g. 65">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Bench PR (kg)</label>
+          <input type="number" id="profile-pr-bench" step="0.5" placeholder="e.g. 65">
+        </div>
+        <div class="login-field">
+          <label>Squat PR (kg)</label>
+          <input type="number" id="profile-pr-squat" step="0.5" placeholder="e.g. 100">
+        </div>
+        <div class="login-field">
+          <label>Deadlift PR (kg)</label>
+          <input type="number" id="profile-pr-dl" step="0.5" placeholder="e.g. 120">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Height (cm)</label>
+          <input type="number" id="profile-height" step="1" placeholder="e.g. 183">
+        </div>
+        <div class="login-field">
+          <label>Weight (kg)</label>
+          <input type="number" id="profile-weight" step="0.5" placeholder="e.g. 78.8">
+        </div>
       </div>
       <div class="login-field">
         <label>4-Digit PIN <span style="color:var(--mu);font-size:9px">(optional)</span></label>
@@ -677,7 +717,11 @@ async function signUp(){
   const username=document.getElementById("signup-name").value.trim().toLowerCase();
   const email=document.getElementById("signup-email").value.trim();
   const password=document.getElementById("signup-password").value;
-  const pr=parseFloat(document.getElementById("signup-pr").value)||60;
+  const prBench=parseFloat(document.getElementById("signup-pr-bench").value)||0;
+  const prSquat=parseFloat(document.getElementById("signup-pr-squat").value)||0;
+  const prDL=parseFloat(document.getElementById("signup-pr-dl").value)||0;
+  const height=parseFloat(document.getElementById("signup-height").value)||0;
+  const weight=parseFloat(document.getElementById("signup-weight").value)||0;
   const pin=document.getElementById("signup-pin").value;
   const pin2=document.getElementById("signup-pin2").value;
 
@@ -688,13 +732,17 @@ async function signUp(){
   if(pin&&pin!==pin2){loginErr("PINs don't match.");return;}
   if(pin&&(pin.length!==4||!/^\d+$/.test(pin))){loginErr("PIN must be exactly 4 digits.");return;}
 
-  // Check username availability one more time before committing
   const status=document.getElementById("uname-status").textContent;
   if(status==="✗ taken"){loginErr("That username is taken — choose another.");return;}
 
   const {data,error}=await _sb.auth.signUp({
     email,password,
-    options:{data:{display_name:username,pr,colour:PRESETS[0],pin:pin||null}}
+    options:{data:{
+      display_name:username,
+      pr:prBench,pr_squat:prSquat,pr_dl:prDL,
+      height_cm:height,weight_kg:weight,
+      colour:PRESETS[0],pin:pin||null
+    }}
   });
   if(error){
     if(error.message.toLowerCase().includes("already registered")){
@@ -705,13 +753,11 @@ async function signUp(){
     return;
   }
 
-  // Claim username in DB (user is now signed in)
   if(data.user){
     try{
       await claimUsername(username,data.user.id);
     }catch(e){
       loginErr(e.message);
-      // Roll back — delete the auth user isn't possible from client, but username won't be claimed
       return;
     }
   }
@@ -732,7 +778,11 @@ async function signInGoogle(){
 async function completeProfile(){
   loginErr();
   const username=document.getElementById("profile-name").value.trim().toLowerCase();
-  const pr=parseFloat(document.getElementById("profile-pr").value)||60;
+  const prBench=parseFloat(document.getElementById("profile-pr-bench").value)||0;
+  const prSquat=parseFloat(document.getElementById("profile-pr-squat").value)||0;
+  const prDL=parseFloat(document.getElementById("profile-pr-dl").value)||0;
+  const height=parseFloat(document.getElementById("profile-height").value)||0;
+  const weight=parseFloat(document.getElementById("profile-weight").value)||0;
   const pin=document.getElementById("profile-pin").value;
   const pin2=document.getElementById("profile-pin2").value;
 
@@ -752,11 +802,15 @@ async function completeProfile(){
   catch(e){loginErr(e.message);return;}
 
   const {error}=await _sb.auth.updateUser({
-    data:{display_name:username,pr,colour:PRESETS[0],pin:pin||null,profile_complete:true}
+    data:{
+      display_name:username,
+      pr:prBench,pr_squat:prSquat,pr_dl:prDL,
+      height_cm:height,weight_kg:weight,
+      colour:PRESETS[0],pin:pin||null,profile_complete:true
+    }
   });
   if(error){loginErr(error.message);return;}
 
-  // Refresh session and boot
   const {data:{session}}=await _sb.auth.getSession();
   if(session) bootApp(session);
 }
@@ -1702,6 +1756,8 @@ function updateDash(){
   // Sensitive stat cards — hidden entirely in privacy mode
   const sensitiveCards=privacy?"":`
     <div class="sc"><div class="l">Bench PR</div><div class="v">${a.pr}kg</div><div class="s">Starting</div></div>
+    ${a.pr_squat?`<div class="sc"><div class="l">Squat PR</div><div class="v">${a.pr_squat}kg</div><div class="s">Starting</div></div>`:""}
+    ${a.pr_dl?`<div class="sc"><div class="l">Deadlift PR</div><div class="v">${a.pr_dl}kg</div><div class="s">Starting</div></div>`:""}
     <div class="sc"><div class="l">Target PR</div><div class="v">${tpr}kg</div><div class="s">Editable above</div></div>`;
 
   // e1RM card — value masked in privacy, label always shown
@@ -3021,14 +3077,23 @@ async function bootApp(session){
 
   const user=session.user;
   const meta=user.user_metadata||{};
-  const isGoogle=user.app_metadata?.provider==="google";
+  const isGoogle=user.app_metadata?.provider==="google"||
+    (user.identities||[]).some(i=>i.provider==="google");
 
   // Google users who haven't set a username yet — show profile form
   if(isGoogle&&!meta.profile_complete){
-    document.getElementById("login-screen").style.display="flex";
-    document.getElementById("app").style.display="none";
-    showProfileForm();
-    return;
+    // Double-check the usernames table — they may have completed profile
+    // before the profile_complete flag was added
+    const existing=await getUsername(user.id);
+    if(!existing){
+      document.getElementById("login-screen").style.display="flex";
+      document.getElementById("app").style.display="none";
+      showProfileForm();
+      return;
+    }
+    // Username exists — mark complete in metadata silently and continue
+    _sb.auth.updateUser({data:{profile_complete:true,display_name:existing}}).catch(()=>{});
+    meta.display_name=existing;
   }
 
   // Build single-athlete entry from logged-in user
@@ -3036,6 +3101,10 @@ async function bootApp(session){
     id:user.id,
     name:meta.display_name||user.email.split("@")[0],
     pr:parseFloat(meta.pr)||60,
+    pr_squat:parseFloat(meta.pr_squat)||0,
+    pr_dl:parseFloat(meta.pr_dl)||0,
+    height_cm:parseFloat(meta.height_cm)||0,
+    weight_kg:parseFloat(meta.weight_kg)||0,
     colour:meta.colour||PRESETS[0]
   };
   athletes=[userAthlete];
@@ -3044,6 +3113,10 @@ async function bootApp(session){
   // Load PIN from user metadata into db so existing PIN logic works
   if(!db[currentId]) db[currentId]={};
   if(meta.pin) db[currentId]["__pin__"]=meta.pin;
+  // Pre-populate height from signup if not already stored
+  if(meta.height_cm&&!db[currentId]["height-m"]){
+    db[currentId]["height-m"]=(meta.height_cm/100).toFixed(2);
+  }
 
   // Load data
   await Promise.all([dbFetch(currentId),bwFetch(currentId),progFetch(currentId)]);
