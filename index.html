@@ -385,7 +385,7 @@ select{cursor:pointer;}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Bench PR (kg)</label>
-          <input type="number" id="signup-pr-bench" step="0.5" placeholder="e.g. 65" min="0">
+          <input type="number" id="signup-pr-bench" step="0.5" placeholder="e.g. 100" min="0">
         </div>
         <div class="login-field">
           <label>Squat PR (kg)</label>
@@ -393,22 +393,22 @@ select{cursor:pointer;}
         </div>
         <div class="login-field">
           <label>Deadlift PR (kg)</label>
-          <input type="number" id="signup-pr-dl" step="0.5" placeholder="e.g. 120" min="0">
+          <input type="number" id="signup-pr-dl" step="0.5" placeholder="e.g. 100" min="0">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Height (cm)</label>
-          <input type="number" id="signup-height" step="1" placeholder="e.g. 183" min="100" max="250">
+          <input type="number" id="signup-height" step="1" placeholder="e.g. 180" min="100" max="250">
         </div>
         <div class="login-field">
           <label>Weight (kg)</label>
-          <input type="number" id="signup-weight" step="0.5" placeholder="e.g. 78.8" min="30" max="300">
+          <input type="number" id="signup-weight" step="0.5" placeholder="e.g. 70" min="30" max="300">
         </div>
       </div>
       <div class="login-field">
         <label>4-Digit PIN</label>
-        <div style="display:flex;gap:6px;margin-top:3px">
+        <div style="display:flex;gap:6px;margin-top:3px;justify-content:center">
           <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
             <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
               placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
@@ -449,7 +449,7 @@ select{cursor:pointer;}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Bench PR (kg)</label>
-          <input type="number" id="profile-pr-bench" step="0.5" placeholder="e.g. 65">
+          <input type="number" id="profile-pr-bench" step="0.5" placeholder="e.g. 100">
         </div>
         <div class="login-field">
           <label>Squat PR (kg)</label>
@@ -457,17 +457,17 @@ select{cursor:pointer;}
         </div>
         <div class="login-field">
           <label>Deadlift PR (kg)</label>
-          <input type="number" id="profile-pr-dl" step="0.5" placeholder="e.g. 120">
+          <input type="number" id="profile-pr-dl" step="0.5" placeholder="e.g. 100">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Height (cm)</label>
-          <input type="number" id="profile-height" step="1" placeholder="e.g. 183">
+          <input type="number" id="profile-height" step="1" placeholder="e.g. 180">
         </div>
         <div class="login-field">
           <label>Weight (kg)</label>
-          <input type="number" id="profile-weight" step="0.5" placeholder="e.g. 78.8">
+          <input type="number" id="profile-weight" step="0.5" placeholder="e.g. 70">
         </div>
       </div>
       <div class="login-field">
@@ -3266,7 +3266,7 @@ function buildPR(){
             id="pr-${currentSub.pr}-${idx}"
             style="background:var(--bg);border:1px solid var(--ac);color:var(--ac);
             font-weight:700;font-size:13px;padding:4px;border-radius:3px;width:68px;text-align:center"
-            onchange="set('pr-${currentSub.pr}-${idx}',this.value);buildPR()"></td>
+            onchange="set('pr-${currentSub.pr}-${idx}',this.value);buildPR();syncPRToProfile('${currentSub.pr}')"></td>
           <td style="color:var(--cy);font-weight:600;font-size:12px">${autoE?autoE.toFixed(1)+"kg":"—"}</td>
           <td id="prd-${currentSub.pr}-${idx}" style="font-weight:700;font-size:12px">—</td>
           <td><button class="del-set" onclick="delPRRow('${currentSub.pr}',${idx},${rows.length})">×</button></td>
@@ -3329,15 +3329,43 @@ function addPRRow(lift){
 }
 
 function delPRRow(lift,idx,total){
-  // Clear stored values for this row, shift subsequent rows up
   for(let i=idx;i<total-1;i++){
     set(`pr-${lift}-${i}`,get(`pr-${lift}-${i+1}`));
     set(`pr-${lift}-date-${i}`,get(`pr-${lift}-date-${i+1}`));
   }
-  // Clear last row
   set(`pr-${lift}-${total-1}`,"");
   set(`pr-${lift}-date-${total-1}`,"");
   buildPR();
+  syncPRToProfile(lift);
+}
+
+// Sync the highest logged PR for a lift back to profiles + user_metadata
+function syncPRToProfile(lift){
+  const liftMap={bench:"pr_bench",squat:"pr_squat",deadlift:"pr_dl"};
+  const metaKey=liftMap[lift];
+  if(!metaKey) return;
+  // Find highest value across all logged rows
+  let best=0;
+  for(let i=0;i<20;i++){
+    const v=parseFloat(get(`pr-${lift}-${i}`));
+    if(v&&v>best) best=v;
+  }
+  if(!best) return;
+  // Update athlete object in memory
+  const a=ca();
+  if(a){
+    if(metaKey==="pr_bench") a.pr=best;
+    else if(metaKey==="pr_squat") a.pr_squat=best;
+    else if(metaKey==="pr_dl") a.pr_dl=best;
+  }
+  // Sync to Supabase user_metadata and profiles table
+  const metaUpdate={};
+  metaUpdate[metaKey.replace("pr_","pr")]=best; // user_metadata uses pr, pr_squat, pr_dl
+  if(metaKey==="pr_bench") metaUpdate.pr=best;
+  else metaUpdate[metaKey]=best;
+  _sb.auth.updateUser({data:metaUpdate}).catch(()=>{});
+  _sb.from("profiles").update({[metaKey]:best}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  if(_cachedMeta) _cachedMeta[metaKey.replace("pr_bench","pr")]=best;
 }
 
 function buildPROther(){
@@ -4409,6 +4437,54 @@ async function doDeleteAccount(){
 }
 
 // ══════════════════════════════════════════════════════
+//  BUG REPORT
+// ══════════════════════════════════════════════════════
+function openBugReport(){
+  document.getElementById("bug-description").value="";
+  document.getElementById("bug-steps").value="";
+  openModal("mo-bug");
+}
+
+async function submitBugReport(){
+  const desc=document.getElementById("bug-description").value.trim();
+  if(!desc){alert("Please describe the bug.");return;}
+  const steps=document.getElementById("bug-steps").value.trim();
+  const a=ca();
+  const report={
+    user:a?.name||"unknown",
+    user_id:currentId,
+    description:desc,
+    steps:steps||null,
+    url:window.location.href,
+    ua:navigator.userAgent.slice(0,150),
+    ts:new Date().toISOString()
+  };
+
+  // Store in Supabase
+  try{
+    await _sb.from("bug_reports").insert({
+      user_id:currentId,
+      username:a?.name||"unknown",
+      description:desc,
+      steps:steps||null,
+      created_at:new Date().toISOString()
+    });
+  }catch(e){
+    console.warn("Bug report DB save failed:",e.message);
+  }
+
+  // Also open mailto as backup
+  const subject=encodeURIComponent(`[Gym Tracker Bug] ${desc.slice(0,60)}`);
+  const body=encodeURIComponent(
+    `User: ${a?.name||"unknown"} (${currentId})\n\nDescription:\n${desc}\n\nSteps:\n${steps||"—"}\n\nURL: ${window.location.href}`
+  );
+  window.location.href=`mailto:joshuavdm7@gmail.com?subject=${subject}&body=${body}`;
+
+  closeModal("mo-bug");
+  alert("Bug report sent — thanks!");
+}
+
+// ══════════════════════════════════════════════════════
 //  INIT — driven by Supabase auth session
 // ══════════════════════════════════════════════════════
 async function bootApp(session){
@@ -4537,6 +4613,38 @@ _sb.auth.onAuthStateChange((event,session)=>{
   }
 });
 </script>
+<!-- BUG REPORT BUTTON -->
+<button id="bug-btn" onclick="openBugReport()"
+  style="position:fixed;bottom:16px;right:16px;z-index:500;
+  background:var(--sf);border:1px solid var(--bd);border-radius:20px;
+  padding:6px 12px;font-size:11px;color:var(--mu);cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);transition:.2s;display:flex;align-items:center;gap:5px"
+  onmouseover="this.style.borderColor='var(--tx)';this.style.color='var(--tx)'"
+  onmouseout="this.style.borderColor='var(--bd)';this.style.color='var(--mu)'">
+  🐛 Report Bug
+</button>
+
+<!-- BUG REPORT MODAL -->
+<div class="mo" id="mo-bug">
+  <div class="md">
+    <h2>Report a Bug</h2>
+    <div class="login-field">
+      <label>What went wrong?</label>
+      <textarea id="bug-description" placeholder="Describe what happened and what you expected…"
+        style="min-height:80px"></textarea>
+    </div>
+    <div class="login-field">
+      <label>Steps to reproduce (optional)</label>
+      <textarea id="bug-steps" placeholder="e.g. 1. Went to Programs 2. Clicked…"
+        style="min-height:60px"></textarea>
+    </div>
+    <div class="md-btns">
+      <button class="mb sec" onclick="closeModal('mo-bug')">Cancel</button>
+      <button class="mb pri" onclick="submitBugReport()">Send Report</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- #app -->
 </body>
 </html>
