@@ -25,13 +25,6 @@ body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-h
   font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;
   border:2px solid var(--bd);background:transparent;color:var(--mu);transition:.2s;}
 .chip.active{border-color:var(--ac);color:var(--ac);background:rgba(232,255,0,.07);}
-.chip-dot{width:7px;height:7px;border-radius:50%;}
-.chip-del{font-size:13px;opacity:.3;margin-left:2px;cursor:pointer;}
-.chip-del:hover{opacity:1;color:var(--red);}
-.add-btn{width:28px;height:28px;border-radius:50%;border:2px dashed var(--mu);
-  background:transparent;color:var(--mu);font-size:16px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:.2s;flex-shrink:0;}
-.add-btn:hover{border-color:var(--tx);color:var(--tx);}
 .tb-right{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap;}
 .icon-btn{background:transparent;border:1px solid var(--bd);border-radius:14px;
   padding:4px 9px;font-size:11px;color:var(--mu);cursor:pointer;transition:.2s;}
@@ -101,12 +94,6 @@ main{padding:13px;max-width:1000px;margin:0 auto;}
 .sched-t{font-family:'Bebas Neue',sans-serif;font-size:15px;margin-top:2px;}
 .sched-i{margin-top:4px;font-size:10px;color:var(--mu);line-height:1.8;}
 
-/* NOTE CARDS */
-.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:9px;margin-top:9px;}
-.nc{background:var(--sf);border-radius:4px;padding:12px;border-left:3px solid var(--red);}
-.nc.g{border-left-color:var(--gn);}.nc.a{border-left-color:var(--ac);}.nc.p{border-left-color:var(--pu);}
-.nc h4{font-family:'Bebas Neue',sans-serif;font-size:13px;margin-bottom:4px;}
-.nc p{font-size:11px;color:var(--mu);line-height:1.6;}
 
 /* DAY CARD */
 .day-card{background:var(--sf);border-radius:5px;overflow:hidden;margin-bottom:7px;}
@@ -278,8 +265,10 @@ select{cursor:pointer;}
 
 /* EYE TOGGLE */
 .eye-btn{background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--mu);
-  padding:3px;transition:.2s;}
+  padding:3px;transition:.2s;position:relative;display:inline-flex;align-items:center;justify-content:center;}
 .eye-btn:hover{color:var(--tx);}
+.eye-btn.hidden-stat::after{content:"";position:absolute;width:2px;height:18px;
+  background:var(--red);transform:rotate(45deg);border-radius:1px;opacity:.9;pointer-events:none;}
 
 /* TARGET EDIT */
 .te-wrap{display:flex;align-items:center;gap:6px;margin-top:5px;}
@@ -832,7 +821,6 @@ const SB_URL = "https://sorzrdphywjzyrgelgvs.supabase.co";
 const SB_KEY = "sb_publishable_kDrH6TN4OHnOoyf1zufX7g_KagChtzn";
 const HDR = {"apikey":SB_KEY,"Content-Type":"application/json"};
 const PRESETS = ["#e8ff00","#00e5ff","#ff4d00","#b47cff","#00ff9d","#ff9d00","#ff4d8b","#60a5fa","#f472b6","#fff"];
-const DEFAULT_ATHLETES = [{id:"josh",name:"Josh",pr:65,colour:"#e8ff00"},{id:"ross",name:"Ross",pr:90,colour:"#00e5ff"}];
 const WEEK_DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
 // Supabase JS client — handles JWT automatically for RLS
@@ -1166,7 +1154,15 @@ const PROG_TEMPLATES = {
     desc:"3-week peaking block + deload · Bench, Squat, or DL",
     weeks:4,
     fixed:true,
-    liftPicker:true, // asks which lift + current 1RM on create
+    liftPicker:true,
+    // Per-week percentage increments by day (Mon/Wed/Fri/Sat = day 0/1/2/3)
+    // Each array is [day0pct, day1pct, day2pct, day3pct]
+    weeklyPct:[
+      [0.70,0.75,0.80,0.85], // week 1
+      [0.725,0.775,0.825,0.875], // week 2 (+2.5%)
+      [0.75,0.80,0.85,0.90],  // week 3 (+5%)
+    ],
+    liftDays:["Monday","Wednesday","Friday","Saturday"], // order matches weeklyPct
     // Days use __LIFT__ placeholder — replaced on create with chosen exercise
     days:{
       Monday:{name:"Day 1",exercises:[
@@ -1389,7 +1385,6 @@ const PROG_TEMPLATES = {
 let athletes=[], currentId="", db={}, bwRows={}, programs={};
 let saveTimer=null, rtInterval=null, rtSecs=0;
 let pinSessions={}, pinBuf="", pendingPin=null;
-let newColour=PRESETS[0], athleteToDelete=null;
 let currentMain="dash", currentSub={prog:null,pr:"bench"};
 let offlineQueue=[], isOnline=navigator.onLine;
 let selectedTemplate="Smolov Jr.", addProgContext={};
@@ -1473,18 +1468,6 @@ async function dbSave(id){
   catch(e){ss("err","save failed");console.error("dbSave:",e.message);queueOp("workouts","POST",payload);}
 }
 
-async function metaSave(){
-  const payload={id:"__meta__",athlete:"__meta__",data:{athletes},updated_at:new Date().toISOString()};
-  if(!isOnline){queueOp("workouts","POST",payload);return;}
-  try{await sbReq("workouts","POST",payload);}catch{}
-}
-
-async function metaLoad(){
-  try{
-    const rows=await sbReq("workouts","GET",null,"athlete=eq.__meta__&select=data");
-    if(rows.length&&rows[0].data.athletes){athletes=rows[0].data.athletes;return true;}
-  }catch{}return false;
-}
 
 async function bwFetch(id){
   try{
@@ -1686,10 +1669,14 @@ function pickSwatch(cid,c,e){
   const w=document.getElementById(cid);
   w.querySelectorAll(".swatch").forEach(s=>s.classList.remove("active"));
   if(e&&e.target) e.target.classList.add("active");
-  if(cid==="new-swatches"){newColour=c;return;}
   if(cid==="dash-swatches"){
     const a=athletes.find(x=>x.id===currentId);
-    if(a){a.colour=c;applyAccent(c);metaSave();renderChips();}
+    if(a){
+      a.colour=c;applyAccent(c);renderChips();
+      // Persist colour to metadata and profiles
+      _sb.auth.updateUser({data:{colour:c}}).catch(()=>{});
+      _sb.from("profiles").update({colour:c}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+    }
   }
 }
 
@@ -2039,13 +2026,6 @@ function updateDash(){
     <div class="pb"><div class="pb-fill" style="width:${progPct}%"></div></div>
   </div>`:""}
 
-  <div class="sec">Rules</div>
-  <div class="note-grid">
-    <div class="nc"><h4>Bench First</h4><p>Always first exercise — fresh CNS.</p></div>
-    <div class="nc g"><h4>90s Rest</h4><p>Timer on between Smolov sets.</p></div>
-    <div class="nc a"><h4>Face Pulls</h4><p>2×15 before every bench session.</p></div>
-    <div class="nc p"><h4>Deload</h4><p>Week 4 mandatory — don't skip.</p></div>
-  </div>
 
   <div class="col-section">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:7px">
@@ -2060,12 +2040,12 @@ function updateDash(){
       Signed in as <strong style="color:var(--tx)">${a.name}</strong>
     </p>
     <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
-      PRs visible to others: <strong style="color:${isPublicStats()?"var(--gn)":"var(--red)"}">${isPublicStats()?"Yes — tap 👁 to hide":"No — tap 🙈 to show"}</strong>
+      PRs visible to others: <strong style="color:${isPublicStats()?"var(--gn)":"var(--red)"}">${isPublicStats()?"Yes — tap 👁 to hide":"No — tap 👁 to show"}</strong>
     </p>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="changeUsername()">Change Username</button>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
-      onclick="openAvatarPicker()">🖼 Avatar</button>
+      onclick="openAvatarPicker()">📷 Avatar</button>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="openLinkAccounts()">🔗 Linked Accounts</button>
     <button class="save-btn" style="margin-top:8px;background:var(--red)"
@@ -2199,7 +2179,10 @@ async function confirmAddProgram(){
   const prog={
     id,athlete:currentId,name,notes,template:selectedTemplate,
     weeks,is_primary:isFirst,is_archived:false,
-    data:{days},
+    data:{
+      days,
+      rm1:tmpl?.liftPicker?(parseFloat(document.getElementById("prog-lift-1rm").value)||0):undefined
+    },
   };
 
   if(!programs[currentId]) programs[currentId]=[];
@@ -2395,25 +2378,44 @@ function buildProgWeek(progId,subId){
 }
 
 function buildSetRow(progId,wi,day,exIdx,s,ex,prevWi,allBest){
-  // prevWi may be undefined when called from refreshExBlock — default to null
   const _prevWi = (prevWi === undefined) ? null : prevWi;
   const wKey=`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`;
   const rKey=`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-reps`;
   const pKey=`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-rpe`;
-  const wVal=get(wKey);const rVal=get(rKey);
+  let wVal=get(wKey);const rVal=get(rKey);
   const ev=e1rm(wVal,rVal);
   const isBest=ev&&allBest&&ev>=allBest-0.05;
 
+  // Auto-fill suggested weight for liftPicker programs (e.g. Smolov Jr.)
+  // Only show as placeholder if no weight logged yet
+  let suggestedWt="";
+  if(!wVal){
+    const prog=(programs[currentId]||[]).find(p=>p.id===progId);
+    const tmpl=prog?.template?PROG_TEMPLATES[prog.template]:null;
+    if(tmpl?.liftPicker&&tmpl.weeklyPct&&prog.data?.rm1){
+      const dayIdx=tmpl.liftDays?.indexOf(day)??-1;
+      if(dayIdx>=0&&wi<tmpl.weeklyPct.length){
+        const pct=tmpl.weeklyPct[wi][dayIdx];
+        // Round to nearest 0.5kg
+        const raw=prog.data.rm1*pct;
+        suggestedWt=(Math.round(raw*2)/2).toFixed(1);
+      }
+    }
+  }
+
   const prevW=_prevWi!==null?get(`p${progId}-w${_prevWi}-${day}-ex${exIdx}-s${s}-wt`):"";
   const prevR=_prevWi!==null?get(`p${progId}-w${_prevWi}-${day}-ex${exIdx}-s${s}-reps`):"";
+  const wtPlaceholder=prevW||suggestedWt||"kg";
+  const wtGhost=prevW?`<div class="ghost-val">${prevW}kg</div>`:
+    suggestedWt?`<div class="ghost-val" style="color:var(--ac);opacity:.5">${suggestedWt}kg</div>`:"";
 
   return `<tr id="setrow-${progId}-w${wi}-${day}-ex${exIdx}-s${s}"${isBest?" class='best-set'":""}>
     <td class="set-num">${s+1}</td>
     <td style="font-size:10px;color:var(--mu)">${ex.reps||"—"}</td>
     <td>
-      <input type="number" step="0.5" placeholder="${prevW||'kg'}" value="${wVal}"
+      <input type="number" step="0.5" placeholder="${wtPlaceholder}" value="${wVal}"
         onchange="setAndRefresh('${wKey}',this.value,'${progId}','${wi}','${day}','${exIdx}','${s}')">
-      ${prevW?`<div class="ghost-val">${prevW}kg</div>`:""}
+      ${wtGhost}
     </td>
     <td>
       <input type="number" placeholder="${prevR||'reps'}" value="${rVal}"
@@ -2708,7 +2710,7 @@ function buildBW(){
   document.getElementById("page-bw").innerHTML=`
   <div class="hero" style="padding-top:12px">
     <h1 style="font-size:clamp(28px,5vw,50px)">BODY<br><span>WEIGHT</span></h1>
-    <p class="hero-sub">${a.name} · daily tracking${privacy?' · <span style="color:var(--or);font-size:10px">🙈 values hidden</span>':""}</p>
+    <p class="hero-sub">${a.name} · daily tracking${privacy?' · <span style="color:var(--or);font-size:10px">👁 values hidden</span>':""}</p>
   </div>
 
   ${latestBW?`<div class="stats">
@@ -2756,7 +2758,7 @@ function buildBW(){
 
     ${rows.length>0?`
     ${privacy?
-      `<div style="text-align:center;padding:20px;color:var(--mu);font-size:12px">🙈 Chart hidden in privacy mode</div>`:
+      `<div style="text-align:center;padding:20px;color:var(--mu);font-size:12px">Chart hidden (stats private)</div>`:
       `<div class="chart-wrap" style="padding:0;background:transparent;margin-bottom:10px">
         <canvas id="chart-bw" style="max-height:180px"></canvas>
       </div>`}
@@ -3455,7 +3457,10 @@ function updatePublicStatsBtn(){
   const btn=document.getElementById("eye-btn");
   if(!btn) return;
   const on=isPublicStats();
-  btn.textContent=on?"👁":"🙈";
+  btn.textContent="👁";
+  btn.classList.toggle("hidden-stat",!on);
+  btn.style.opacity="";
+  btn.style.textDecoration="";
   btn.title=on?"Your PRs are visible to others — click to hide":"Your PRs are hidden from others — click to show";
 }
 
