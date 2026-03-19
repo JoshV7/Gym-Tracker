@@ -2668,66 +2668,32 @@ function buildAnalytics(){
     border-radius:4px;padding:9px 13px;font-size:12px;color:var(--ac);margin-bottom:10px">
     📊 ${cmpText}</div>`:""}
   <div class="sec">Volume Per Session</div>
-  ${volData.length?`<div class="chart-wrap"><canvas id="ch-vol"></canvas></div>`
-    :`<p style="color:var(--mu);font-size:12px;padding:8px 0">No session data yet — log some sets in your program.</p>`}
-  <div class="sec" style="display:flex;align-items:center;gap:8px">
-    <span>e1RM Over Time —</span>
-    <div style="position:relative;flex:1;max-width:260px">
-      <input type="text" id="e1rm-ex-search"
-        value="${_analyticsE1rmEx}"
-        placeholder="Search exercise…"
-        oninput="filterAnalyticsEx(this.value)"
-        onfocus="showAnalyticsExList()"
-        style="width:100%;background:var(--sf2);border:1px solid var(--bd);
-        border-radius:4px;color:var(--tx);padding:4px 8px;font-size:11px">
-      <div id="e1rm-ex-list" style="display:none;position:absolute;top:100%;left:0;right:0;
-        background:var(--sf);border:1px solid var(--bd);border-radius:4px;
-        max-height:180px;overflow-y:auto;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.4)">
-        ${exOptions.map(ex=>`<div style="padding:7px 10px;font-size:11px;cursor:pointer;
-          ${ex===_analyticsE1rmEx?"color:var(--ac);":""}border-bottom:1px solid var(--bd)"
-          onclick="selectAnalyticsEx('${ex.replace(/'/g,"\\'")}')">
-          ${ex}</div>`).join("")}
-      </div>
-    </div>
+  ${volData.length
+    ?`<div class="chart-wrap"><canvas id="ch-vol"></canvas></div>`
+    :`<p style="color:var(--mu);font-size:12px;padding:8px 0">No logged sets found. Make sure you have a primary program set and have entered weights in your sessions.</p>`}
+  <div class="sec" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span>e1RM Over Time</span>
+    <select id="e1rm-ex-select" onchange="selectAnalyticsEx(this.value)"
+      style="flex:1;max-width:280px;background:var(--sf2);border:1px solid var(--bd);
+      border-radius:4px;color:var(--tx);padding:5px 8px;font-size:11px;
+      font-family:'DM Sans',sans-serif">
+      ${exOptions.map(ex=>`<option value="${ex}" ${ex===_analyticsE1rmEx?"selected":""}>${ex}</option>`).join("")}
+    </select>
   </div>
   <div class="chart-wrap"><canvas id="ch-e1rm"></canvas></div>
   <div class="sec">Volume by Muscle Group</div>
-  <div class="chart-wrap"><canvas id="ch-muscle"></canvas></div>`;
-
-  // Close dropdown when clicking outside
-  setTimeout(()=>{
-    document.addEventListener("click", function closeList(e){
-      if(!e.target.closest("#e1rm-ex-search")&&!e.target.closest("#e1rm-ex-list")){
-        const l=document.getElementById("e1rm-ex-list");
-        if(l) l.style.display="none";
-        document.removeEventListener("click",closeList);
-      }
-    });
-  },0);
+  ${mvL.length
+    ?`<div class="chart-wrap"><canvas id="ch-muscle"></canvas></div>`
+    :`<p style="color:var(--mu);font-size:12px;padding:8px 0">No muscle data yet — exercises need entries in MUSCLE_MAP to appear here.</p>`}`;
 
   renderAnalyticsCharts(primary,volLabels,volData,mvL,mvD,mvC);
 }
 
-function showAnalyticsExList(){
-  const l=document.getElementById("e1rm-ex-list");
-  if(l) l.style.display="block";
-}
-
-function filterAnalyticsEx(q){
-  const l=document.getElementById("e1rm-ex-list");
-  if(!l) return;
-  l.style.display="block";
-  [...l.children].forEach(el=>{
-    el.style.display=el.textContent.toLowerCase().includes(q.toLowerCase())?"":"none";
-  });
-}
-
 function selectAnalyticsEx(ex){
   _analyticsE1rmEx=ex;
-  const inp=document.getElementById("e1rm-ex-search");
-  if(inp) inp.value=ex;
-  const l=document.getElementById("e1rm-ex-list");
-  if(l) l.style.display="none";
+  // Update the select element if it exists
+  const sel=document.getElementById("e1rm-ex-select");
+  if(sel) sel.value=ex;
   // Re-render just the e1RM chart
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived)||progs[0];
@@ -3257,12 +3223,7 @@ function rerenderAll(){
 function isPublicStats(){return get("__public_stats__")!=="0";}// default ON
 
 function togglePublicStats(){
-  if(hasPin(currentId)){
-    pinBuf="";
-    openPin("verify",currentId,()=>doTogglePublicStats());
-  } else {
-    doTogglePublicStats();
-  }
+  doTogglePublicStats();
 }
 
 function doTogglePublicStats(){
