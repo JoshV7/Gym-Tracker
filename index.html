@@ -483,8 +483,22 @@ select{cursor:pointer;}
       <button class="login-btn pri" onclick="completeProfile()">Continue</button>
     </div>
 
-    <!-- CONFIRM EMAIL STATE -->
-    <div id="confirm-email-form" style="display:none;text-align:center">
+    <!-- NEW PASSWORD (after reset link) -->
+    <div id="new-password-form" style="display:none">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:6px">Setting new password for</p>
+      <p id="reset-email-display" style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:14px"></p>
+      <div class="login-field">
+        <label>New Password (min 6 chars)</label>
+        <input type="password" id="new-password-input" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter') saveNewPassword()">
+      </div>
+      <div class="login-field">
+        <label>Confirm Password</label>
+        <input type="password" id="new-password-confirm" placeholder="••••••••"
+          onkeydown="if(event.key==='Enter') saveNewPassword()">
+      </div>
+      <button class="login-btn pri" onclick="saveNewPassword()">Set New Password</button>
+    </div>
       <div style="font-size:48px;margin-bottom:12px">📬</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;margin-bottom:8px">Check Your Email</div>
       <p style="font-size:12px;color:var(--mu);margin-bottom:6px">
@@ -850,32 +864,64 @@ const _sb = window.supabase.createClient(SB_URL, SB_KEY, {
 function loginErr(msg){document.getElementById("login-err").textContent=msg||"";}
 
 function showLogin(){
-  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="login-form"?"":"none";
   });
   loginErr();
 }
 function showSignUp(){
-  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="signup-form"?"":"none";
   });
   loginErr();
 }
 function showReset(){
-  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="reset-form"?"":"none";
   });
   loginErr();
 }
 function showProfileForm(){
-  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="profile-form"?"":"none";
   });
   loginErr();
 }
 
+function showNewPassword(){
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="new-password-form"?"":"none";
+  });
+  document.getElementById("new-password-input").value="";
+  document.getElementById("new-password-confirm").value="";
+  loginErr();
+  // Populate email from current session
+  _sb.auth.getUser().then(({data:{user}})=>{
+    if(user?.email){
+      document.getElementById("reset-email-display").textContent=user.email;
+    }
+  });
+}
+
+async function saveNewPassword(){
+  loginErr();
+  const pw=document.getElementById("new-password-input").value;
+  const pw2=document.getElementById("new-password-confirm").value;
+  if(!pw||pw.length<6){loginErr("Password must be at least 6 characters.");return;}
+  if(pw!==pw2){loginErr("Passwords don't match.");return;}
+  const btn=document.querySelector("#new-password-form .login-btn.pri");
+  btn.textContent="Saving…";btn.disabled=true;
+  const {error}=await _sb.auth.updateUser({password:pw});
+  btn.textContent="Set New Password";btn.disabled=false;
+  if(error){loginErr(error.message);return;}
+  // Sign out and go to login screen
+  await _sb.auth.signOut();
+  loginErr("Password updated — please sign in.");
+  showLogin();
+}
+
 function showConfirmEmail(email){
-  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="confirm-email-form"?"":"none";
   });
   document.getElementById("confirm-email-addr").textContent=email||"your email";
@@ -4635,8 +4681,14 @@ async function bootApp(session){
 
 // Auth state listener — fires on page load and on sign-in/out
 _sb.auth.onAuthStateChange((event,session)=>{
+  if(event==="PASSWORD_RECOVERY"){
+    // User clicked reset link — show new password form
+    document.getElementById("login-screen").style.display="flex";
+    document.getElementById("app").style.display="none";
+    showNewPassword();
+    return;
+  }
   if(session&&(event==="SIGNED_IN"||event==="INITIAL_SESSION"||event==="TOKEN_REFRESHED"||event==="USER_UPDATED")){
-    // Clean the URL if it has auth tokens in it
     if(window.location.hash.includes("access_token")||window.location.search.includes("code=")){
       window.history.replaceState(null,"",window.location.pathname);
     }
