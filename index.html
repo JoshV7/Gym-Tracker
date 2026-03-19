@@ -518,18 +518,46 @@ select{cursor:pointer;}
 
 <!-- AVATAR PICKER MODAL -->
 <div class="mo" id="mo-avatar">
-  <div class="md">
-    <h2>Choose Avatar</h2>
-    <p style="font-size:11px;color:var(--mu);margin-bottom:12px">Pick an emoji that represents you</p>
-    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:14px">
+  <div class="md" style="max-width:400px;width:min(400px,95vw)">
+    <h2>Profile Picture</h2>
+
+    <!-- Current avatar preview -->
+    <div style="display:flex;justify-content:center;margin-bottom:14px">
+      <div id="avatar-preview" style="width:80px;height:80px;border-radius:50%;
+        overflow:hidden;border:3px solid var(--ac);display:flex;align-items:center;
+        justify-content:center;font-size:40px;background:var(--sf2)"></div>
+    </div>
+
+    <!-- Upload photo -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Upload Photo</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <div class="save-btn" style="margin:0;font-size:10px;pointer-events:none">📷 Choose Image</div>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none"
+          onchange="handleAvatarUpload(this)">
+        <span id="avatar-file-name" style="font-size:11px;color:var(--mu)">No file chosen</span>
+      </label>
+      <div id="avatar-upload-progress" style="display:none;margin-top:8px">
+        <div style="height:3px;background:var(--sf2);border-radius:2px;overflow:hidden">
+          <div id="avatar-upload-bar" style="height:100%;width:0%;background:var(--ac);transition:.3s"></div>
+        </div>
+        <div id="avatar-upload-status" style="font-size:10px;color:var(--mu);margin-top:4px">Uploading…</div>
+      </div>
+    </div>
+
+    <!-- Or choose emoji -->
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Or Choose Emoji</div>
+    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:14px">
       ${['💪','🏋️','🔥','⚡','🦁','🐺','🦅','🐉','🏆','👑','💀','🧠','🎯','🚀','⚔️','🛡️',
          '🐻','🦊','🐯','🦍','🦈','🦾','🤖','👤','🌙','☀️','⭐','🌊','🗻','🌋','💎','🎭'].map(e=>
-        `<div onclick="selectAvatar('${e}')" style="font-size:24px;text-align:center;cursor:pointer;
-          padding:6px;border-radius:8px;border:2px solid transparent;transition:.15s"
+        `<div onclick="selectAvatar('${e}')" style="font-size:22px;text-align:center;cursor:pointer;
+          padding:5px;border-radius:6px;border:2px solid transparent;transition:.15s"
           class="avatar-opt">${e}</div>`).join('')}
     </div>
+
     <div class="md-btns">
-      <button class="mb sec" onclick="closeModal('mo-avatar')">Cancel</button>
+      <button class="mb sec" onclick="closeModal('mo-avatar')">Close</button>
+      ${`<button class="mb danger" id="avatar-remove-btn" onclick="removeAvatar()" style="display:none">Remove Photo</button>`}
     </div>
   </div>
 </div>
@@ -1598,12 +1626,16 @@ function requirePin(id,action){
 //  ATHLETE MANAGEMENT
 // ══════════════════════════════════════════════════════
 function renderChips(){
-  document.getElementById("athlete-tabs").innerHTML=athletes.map(a=>`
-    <div class="chip${a.id===currentId?" active":""}"
+  document.getElementById("athlete-tabs").innerHTML=athletes.map(a=>{
+    const avContent=a.avatar_url
+      ?`<img src="${a.avatar_url}" style="width:20px;height:20px;border-radius:50%;object-fit:cover">`
+      :`<span style="font-size:14px">${a.avatar_emoji||"💪"}</span>`;
+    return `<div class="chip${a.id===currentId?" active":""}"
       style="cursor:default;${a.id===currentId?`border-color:${a.colour};color:${a.colour};background:${a.colour}10`:""}">
-      <span style="font-size:14px">${a.avatar_emoji||"💪"}</span>
+      ${avContent}
       ${a.name}
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 async function switchAthlete(id){
@@ -3333,33 +3365,125 @@ function updatePublicStatsBtn(){
 const AVATAR_EMOJIS=['💪','🏋️','🔥','⚡','🦁','🐺','🦅','🐉','🏆','👑','💀','🧠','🎯','🚀','⚔️','🛡️',
   '🐻','🦊','🐯','🦍','🦈','🦾','🤖','👤','🌙','☀️','⭐','🌊','🗻','🌋','💎','🎭'];
 
-function avatarHtml(emoji,colour,size=36,fontSize=18){
+function avatarHtml(emoji,colour,avatarUrl,size=36,fontSize=18){
+  if(avatarUrl){
+    return `<div class="feed-avatar" style="width:${size}px;height:${size}px;padding:0;overflow:hidden;background:var(--sf2)">
+      <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover" loading="lazy"
+        onerror="this.parentElement.textContent='${emoji||'💪'}';this.remove()">
+    </div>`;
+  }
   if(emoji&&emoji!=="?"){
     return `<div class="feed-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:var(--sf2)">${emoji}</div>`;
   }
-  // Fallback to initial
-  const initial="?";
-  return `<div class="feed-avatar initial" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.4)}px;background:${colour||"#e8ff00"}">${initial}</div>`;
+  const initial=(colour||"").slice(0,1)||"?";
+  return `<div class="feed-avatar initial" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.4)}px;background:${colour||"#e8ff00"}">💪</div>`;
 }
 
 function openAvatarPicker(){
-  const cur=_cachedMeta?.avatar_emoji||"";
+  // Update preview with current avatar
+  const a=ca();
+  const preview=document.getElementById("avatar-preview");
+  const curUrl=_cachedMeta?.avatar_url||"";
+  const curEmoji=_cachedMeta?.avatar_emoji||"💪";
+  if(curUrl){
+    preview.innerHTML=`<img src="${curUrl}" style="width:100%;height:100%;object-fit:cover">`;
+    document.getElementById("avatar-remove-btn").style.display="";
+  } else {
+    preview.textContent=curEmoji;
+    document.getElementById("avatar-remove-btn").style.display="none";
+  }
+  document.getElementById("avatar-file-name").textContent="No file chosen";
+  document.getElementById("avatar-upload-progress").style.display="none";
+  // Highlight current emoji
   document.querySelectorAll(".avatar-opt").forEach(el=>{
-    el.style.borderColor=el.textContent===cur?"var(--ac)":"transparent";
-    el.style.background=el.textContent===cur?"var(--sf2)":"";
+    el.style.borderColor=el.textContent===curEmoji&&!curUrl?"var(--ac)":"transparent";
+    el.style.background=el.textContent===curEmoji&&!curUrl?"var(--sf2)":"";
   });
   openModal("mo-avatar");
 }
 
+async function handleAvatarUpload(input){
+  const file=input.files[0];
+  if(!file) return;
+  document.getElementById("avatar-file-name").textContent=file.name;
+  document.getElementById("avatar-upload-progress").style.display="block";
+  document.getElementById("avatar-upload-bar").style.width="20%";
+  document.getElementById("avatar-upload-status").textContent="Uploading…";
+
+  try{
+    // Upload to Supabase storage under user's folder
+    const ext=file.name.split(".").pop().toLowerCase()||"jpg";
+    const path=`${currentId}/avatar.${ext}`;
+
+    document.getElementById("avatar-upload-bar").style.width="50%";
+
+    const {data,error}=await _sb.storage.from("avatars").upload(path,file,{
+      upsert:true,
+      contentType:file.type
+    });
+    if(error) throw error;
+
+    document.getElementById("avatar-upload-bar").style.width="80%";
+
+    // Get public URL
+    const {data:{publicUrl}}=_sb.storage.from("avatars").getPublicUrl(path);
+
+    // Add cache-busting to force refresh
+    const url=publicUrl+"?t="+Date.now();
+
+    // Save to metadata and profiles
+    await _sb.auth.updateUser({data:{avatar_url:url,avatar_emoji:null}});
+    if(_cachedMeta){_cachedMeta.avatar_url=url;_cachedMeta.avatar_emoji=null;}
+    _sb.from("profiles").update({avatar_url:url,avatar_emoji:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+
+    document.getElementById("avatar-upload-bar").style.width="100%";
+    document.getElementById("avatar-upload-status").textContent="Done ✓";
+
+    // Update preview
+    document.getElementById("avatar-preview").innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    document.getElementById("avatar-remove-btn").style.display="";
+
+    // Refresh chip
+    const a=ca();if(a){a.avatar_url=url;a.avatar_emoji=null;renderChips();}
+
+    setTimeout(()=>{closeModal("mo-avatar");},800);
+
+  }catch(err){
+    document.getElementById("avatar-upload-status").textContent="Failed: "+err.message;
+    document.getElementById("avatar-upload-bar").style.background="var(--red)";
+    console.error("Avatar upload failed:",err);
+  }
+}
+
 async function selectAvatar(emoji){
+  // Selecting emoji clears photo
+  document.querySelectorAll(".avatar-opt").forEach(el=>{
+    el.style.borderColor=el.textContent===emoji?"var(--ac)":"transparent";
+    el.style.background=el.textContent===emoji?"var(--sf2)":"";
+  });
+  document.getElementById("avatar-preview").textContent=emoji;
+  document.getElementById("avatar-remove-btn").style.display="none";
+
+  await _sb.auth.updateUser({data:{avatar_emoji:emoji,avatar_url:null}});
+  if(_cachedMeta){_cachedMeta.avatar_emoji=emoji;_cachedMeta.avatar_url=null;}
+  _sb.from("profiles").update({avatar_emoji:emoji,avatar_url:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  const a=ca();if(a){a.avatar_emoji=emoji;a.avatar_url=null;renderChips();}
+  setTimeout(()=>{closeModal("mo-avatar");},300);
+}
+
+async function removeAvatar(){
+  if(!confirm("Remove profile photo?")) return;
+  // Delete from storage
+  const {data:{user}}=await _sb.auth.getUser();
+  // Try deleting both jpg and png
+  ["jpg","jpeg","png","webp","heic","heif","avif"].forEach(ext=>{
+    _sb.storage.from("avatars").remove([`${currentId}/avatar.${ext}`]).catch(()=>{});
+  });
+  await _sb.auth.updateUser({data:{avatar_url:null,avatar_emoji:"💪"}});
+  if(_cachedMeta){_cachedMeta.avatar_url=null;_cachedMeta.avatar_emoji="💪";}
+  _sb.from("profiles").update({avatar_url:null,avatar_emoji:"💪"}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  const a=ca();if(a){a.avatar_url=null;a.avatar_emoji="💪";renderChips();}
   closeModal("mo-avatar");
-  // Save to metadata and profiles table
-  await _sb.auth.updateUser({data:{avatar_emoji:emoji}});
-  if(_cachedMeta) _cachedMeta.avatar_emoji=emoji;
-  // Update profile table
-  _sb.from("profiles").update({avatar_emoji:emoji}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
-  // Update athlete chip
-  const a=ca();if(a){renderChips();updateDash();}
 }
 
 // ══════════════════════════════════════════════════════
@@ -3436,7 +3560,7 @@ async function buildFeed(){
     const d=p.data||{};
     const isOwn=p.user_id===currentId;
     const colour=d.colour||"#e8ff00";
-    const av=avatarHtml(d.avatar_emoji,colour,36,20);
+    const av=avatarHtml(d.avatar_emoji,colour,d.avatar_url||null,36,20);
 
     // Determine post type display
     let bodyHtml="";
@@ -3552,11 +3676,11 @@ function openShareLift(progId,wi,day){
 async function submitShareLift(){
   const a=ca();
   const caption=document.getElementById("share-lift-caption").value.trim();
-  const emoji=_cachedMeta?.avatar_emoji||"";
   let postData={
     username:a.name,
     colour:a.colour||PRESETS[0],
-    avatar_emoji:emoji,
+    avatar_emoji:_cachedMeta?.avatar_emoji||"💪",
+    avatar_url:_cachedMeta?.avatar_url||null,
     caption:caption||null,
     type:_shareLiftType
   };
@@ -3663,6 +3787,7 @@ async function syncProfile(user){
     pr_dl:meta.pr_dl||null,
     public_stats:isPublicStats(),
     avatar_emoji:meta.avatar_emoji||"💪",
+    avatar_url:meta.avatar_url||null,
     updated_at:new Date().toISOString()
   };
   const {error}=await _sb.from("profiles").upsert(payload,{onConflict:"user_id"});
@@ -3946,7 +4071,7 @@ async function viewProfile(userId){
     .select("*").eq("user_id",userId).order("created_at",{ascending:false}).limit(8);
 
   const colour=profile.colour||"#e8ff00";
-  const av=avatarHtml(profile.avatar_emoji,colour,64,32);
+  const av=avatarHtml(profile.avatar_emoji,colour,profile.avatar_url||null,64,32);
   const isOwn=userId===currentId;
 
   // Header banner
@@ -4209,7 +4334,8 @@ async function bootApp(session){
     height_cm:parseFloat(meta.height_cm)||0,
     weight_kg:parseFloat(meta.weight_kg)||0,
     colour:meta.colour||PRESETS[0],
-    avatar_emoji:meta.avatar_emoji||"💪"
+    avatar_emoji:meta.avatar_emoji||"💪",
+    avatar_url:meta.avatar_url||null
   };
   athletes=[userAthlete];
   currentId=user.id;
