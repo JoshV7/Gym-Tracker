@@ -3992,7 +3992,16 @@ async function doDeleteAccount(){
 //  INIT — driven by Supabase auth session
 // ══════════════════════════════════════════════════════
 async function bootApp(session){
-  try{offlineQueue=JSON.parse(localStorage.getItem("gym_queue")||"[]");}catch{}
+  // Load offline queue — only keep items belonging to current user
+  try{
+    const q=JSON.parse(localStorage.getItem("gym_queue")||"[]");
+    offlineQueue=q.filter(op=>
+      op.payload?.athlete===currentId||op.payload?.user_id===currentId
+    );
+    if(offlineQueue.length!==q.length){
+      localStorage.setItem("gym_queue",JSON.stringify(offlineQueue));
+    }
+  }catch{offlineQueue=[];}
 
   const user=session.user;
   const meta=user.user_metadata||{};
