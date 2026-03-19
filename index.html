@@ -1409,7 +1409,7 @@ async function bwDelete(id,date){
 
 async function progFetch(id){
   try{
-    const rows=await sbReq("programs","GET",null,`athlete=eq.${encodeURIComponent(id)}&order=created_at.asc`);
+    const rows=await sbReq("programs","GET",null,`athlete=eq.${encodeURIComponent(id)}&order=updated_at.asc`);
     programs[id]=rows||[];
   }catch{programs[id]=programs[id]||[];}
 }
@@ -2004,7 +2004,6 @@ async function confirmAddProgram(){
     id,athlete:currentId,name,notes,template:selectedTemplate,
     weeks,is_primary:isFirst,is_archived:false,
     data:{days:JSON.parse(JSON.stringify(tmpl?.days||{}))},
-    created_at:new Date().toISOString()
   };
 
   if(!programs[currentId]) programs[currentId]=[];
@@ -4089,7 +4088,6 @@ async function bootApp(session){
 
   applyAccent(accent());applyTheme();renderChips();buildProgNav();updateDash();updateStreak();
   updatePublicStatsBtn();
-  renderSwatches("new-swatches",newColour,c=>newColour=c);
   buildTemplateGrid();
   if(isOnline) flushQueue();
 }
