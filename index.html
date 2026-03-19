@@ -1312,7 +1312,6 @@ function ss(state,txt){
 }
 
 async function sbReq(table,method,payload,matchKey){
-  // Always use the current session JWT so RLS policies work
   const {data:{session}}=await _sb.auth.getSession();
   const token=session?.access_token||SB_KEY;
   const headers={...HDR,"Authorization":"Bearer "+token};
@@ -1322,14 +1321,18 @@ async function sbReq(table,method,payload,matchKey){
   if(method==="GET"){
     if(matchKey) url+=`?${matchKey}`;
   } else if(method==="POST"){
-    opts.headers["Prefer"]="resolution=merge-duplicates";
+    opts.headers["Prefer"]="resolution=merge-duplicates,return=minimal";
     opts.body=JSON.stringify(payload);
   } else if(method==="DELETE"){
     url+=`?${matchKey}`;
   }
   const r=await fetch(url,opts);
-  if(!r.ok) throw new Error(r.status);
-  return r.status===204?null:r.json();
+  if(!r.ok){
+    const txt=await r.text().catch(()=>String(r.status));
+    console.error(`sbReq ${method} ${table} failed:`,r.status,txt);
+    throw new Error(`${r.status}: ${txt}`);
+  }
+  return (r.status===204||r.status===201)?null:r.json().catch(()=>null);
 }
 
 async function dbFetch(id){
@@ -1346,7 +1349,7 @@ async function dbSave(id){
   if(!isOnline){queueOp("workouts","POST",payload);ss("ok","queued");return;}
   ss("spin","saving…");
   try{await sbReq("workouts","POST",payload);ss("ok","saved ✓");}
-  catch{ss("err","save failed");queueOp("workouts","POST",payload);}
+  catch(e){ss("err","save failed");console.error("dbSave:",e.message);queueOp("workouts","POST",payload);}
 }
 
 async function metaSave(){
@@ -1410,7 +1413,8 @@ async function progFetch(id){
 async function progSave(prog){
   const payload={...prog,updated_at:new Date().toISOString()};
   if(!isOnline){queueOp("programs","POST",payload);return;}
-  try{await sbReq("programs","POST",payload);}catch{queueOp("programs","POST",payload);}
+  try{await sbReq("programs","POST",payload);}
+  catch(e){console.error("progSave:",e.message);queueOp("programs","POST",payload);}
 }
 
 async function prHistFetch(id,exercise){
