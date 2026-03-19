@@ -1339,9 +1339,13 @@ async function dbFetch(id){
   ss("spin","syncing…");
   try{
     const rows=await sbReq("workouts","GET",null,`athlete=eq.${encodeURIComponent(id)}&select=data`);
-    db[id]=rows.length?rows[0].data:{};
+    db[id]=(rows&&rows.length)?rows[0].data:{};
     ss("ok","synced");
-  }catch{ss("err","offline");db[id]=db[id]||{};}
+  }catch(e){
+    console.warn("dbFetch failed:",e.message);
+    ss("err","offline");
+    db[id]=db[id]||{};
+  }
 }
 
 async function dbSave(id){
@@ -3224,16 +3228,20 @@ function rerenderAll(){
 //  Eye button controls whether other users can see
 //  your PR cards on the dashboard. PIN required to change.
 // ══════════════════════════════════════════════════════
-function isPublicStats(){return get("__public_stats__")!=="0";}// default ON
-
-function togglePublicStats(){
-  doTogglePublicStats();
+function isPublicStats(){
+  // Check db first, then localStorage fallback
+  const dbVal=get("__public_stats__");
+  if(dbVal!=="") return dbVal!=="0";
+  return localStorage.getItem("public_stats_"+currentId)!=="0"; // default ON
 }
 
 function doTogglePublicStats(){
   const nowOn=!isPublicStats();
   if(!db[currentId]) db[currentId]={};
   db[currentId]["__public_stats__"]=nowOn?"1":"0";
+  // Also persist in localStorage as fallback (doesn't require RLS)
+  localStorage.setItem("public_stats_"+currentId,nowOn?"1":"0");
+  // Async save to db — don't block on failure
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>dbSave(currentId),1200);
   // Sync to profiles table so other users see the change
