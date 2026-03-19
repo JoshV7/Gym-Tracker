@@ -3235,6 +3235,10 @@ function isPublicStats(){
   return localStorage.getItem("public_stats_"+currentId)!=="0"; // default ON
 }
 
+function togglePublicStats(){
+  doTogglePublicStats();
+}
+
 function doTogglePublicStats(){
   const nowOn=!isPublicStats();
   if(!db[currentId]) db[currentId]={};
