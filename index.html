@@ -377,7 +377,36 @@ select{cursor:pointer;}
         <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Continue with Google
       </button>
+      <button class="login-btn sec" onclick="showPhone()" style="margin-top:0">📱 Sign in with Phone</button>
       <p class="login-reset" onclick="showReset()">Forgot password?</p>
+    </div>
+
+    <!-- PHONE SIGN IN -->
+    <div id="phone-form" style="display:none">
+      <div id="phone-step1">
+        <div class="login-field">
+          <label>Phone Number</label>
+          <input type="tel" id="phone-number" placeholder="+447700900000"
+            style="letter-spacing:1px">
+          <div style="font-size:10px;color:var(--mu);margin-top:3px">Include country code e.g. +44 for UK</div>
+        </div>
+        <button class="login-btn pri" onclick="sendOTP()">Send Code</button>
+        <button class="login-btn sec" onclick="showLogin()">Back</button>
+      </div>
+      <div id="phone-step2" style="display:none">
+        <p style="font-size:12px;color:var(--mu);margin-bottom:12px">
+          Enter the 6-digit code sent to <span id="phone-sent-to" style="color:var(--tx)"></span>
+        </p>
+        <div class="login-field">
+          <label>Verification Code</label>
+          <input type="text" id="phone-otp" inputmode="numeric" maxlength="6"
+            placeholder="123456" style="letter-spacing:6px;font-size:18px;text-align:center"
+            onkeydown="if(event.key==='Enter') verifyOTP()">
+        </div>
+        <button class="login-btn pri" onclick="verifyOTP()">Verify</button>
+        <button class="login-btn sec" onclick="showPhone()">Resend Code</button>
+        <button class="login-btn sec" onclick="showLogin()">Back</button>
+      </div>
     </div>
 
     <div id="signup-form" style="display:none">
@@ -497,7 +526,60 @@ select{cursor:pointer;}
 <div class="offline-banner" id="offline-banner">⚠ Offline — changes saved locally and will sync when reconnected</div>
 
 <!-- MODALS -->
-<div class="mo" id="mo-add-athlete">
+<!-- PROFILE VIEW MODAL -->
+<div class="mo" id="mo-profile">
+  <div class="md" style="max-width:420px;width:min(420px,95vw)">
+    <div id="mo-profile-content"></div>
+    <div class="md-btns" style="margin-top:14px">
+      <button class="mb sec" onclick="closeModal('mo-profile')">Close</button>
+      <button class="mb pri" id="mo-profile-friend-btn" onclick="toggleFriend()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- LINK ACCOUNTS MODAL -->
+<div class="mo" id="mo-link">
+  <div class="md">
+    <h2>Linked Sign-in Methods</h2>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:14px">
+      Link multiple methods to the same account. You can then sign in with any of them.
+    </p>
+    <div id="mo-link-content"></div>
+    <div class="md-btns" style="margin-top:14px">
+      <button class="mb sec" onclick="closeModal('mo-link')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- MERGE DATA MODAL -->
+<div class="mo" id="mo-merge">
+  <div class="md">
+    <h2>Data Priority</h2>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:14px">
+      Multiple data sources detected. Which should take priority?
+    </p>
+    <div id="mo-merge-content"></div>
+    <div class="md-btns" style="margin-top:14px">
+      <button class="mb sec" onclick="closeModal('mo-merge')">Cancel</button>
+      <button class="mb pri" onclick="confirmMerge()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIND USERS MODAL -->
+<div class="mo" id="mo-find-users">
+  <div class="md">
+    <h2>Find Users</h2>
+    <div class="login-field" style="margin-bottom:10px">
+      <input type="text" id="find-user-input" placeholder="Search by username…"
+        oninput="searchUsers(this.value)" style="text-align:left;padding:8px 10px">
+    </div>
+    <div id="find-user-results" style="max-height:280px;overflow-y:auto"></div>
+    <div class="md-btns" style="margin-top:10px">
+      <button class="mb sec" onclick="closeModal('mo-find-users')">Close</button>
+    </div>
+  </div>
+</div>
   <div class="md">
     <h2>Add Athlete</h2>
     <label>Name</label><input type="text" id="new-name" placeholder="e.g. Alex" maxlength="20">
@@ -648,6 +730,7 @@ select{cursor:pointer;}
   <div class="mtab" onclick="showMain('body',event)">Body</div>
   <div class="mtab" onclick="showMain('pr',event)">PR Tracker</div>
   <div class="mtab" onclick="showMain('feed',event)">Recent Lifts</div>
+  <div class="mtab" onclick="showMain('friends',event)">Friends</div>
 </div>
 
 <!-- SUB NAV (context-sensitive) -->
@@ -661,6 +744,7 @@ select{cursor:pointer;}
   <div id="page-body" class="page"></div>
   <div id="page-pr" class="page"></div>
   <div id="page-feed" class="page"></div>
+  <div id="page-friends" class="page"></div>
 </main>
 
 <script>
@@ -683,25 +767,25 @@ const _sb = window.supabase.createClient(SB_URL, SB_KEY);
 function loginErr(msg){document.getElementById("login-err").textContent=msg||"";}
 
 function showLogin(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="login-form"?"":"none";
   });
   loginErr();
 }
 function showSignUp(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="signup-form"?"":"none";
   });
   loginErr();
 }
 function showReset(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="reset-form"?"":"none";
   });
   loginErr();
 }
 function showProfileForm(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="profile-form"?"":"none";
   });
   loginErr();
@@ -1786,6 +1870,9 @@ function showMain(id,evt){
   } else if(id==="feed"){
     document.getElementById("page-feed").classList.add("active");
     buildFeed();
+  } else if(id==="friends"){
+    document.getElementById("page-friends").classList.add("active");
+    buildFriends();
   }
 }
 
@@ -1891,6 +1978,8 @@ function updateDash(){
     </p>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="changeUsername()">Change Username</button>
+    <button class="save-btn" style="margin-top:0;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+      onclick="openLinkAccounts()">🔗 Linked Accounts</button>
   </div>
 
   <div style="background:var(--sf);border-radius:5px;padding:12px;margin-top:9px">
@@ -3189,8 +3278,8 @@ async function buildFeed(){
 
     return `<div class="feed-card">
       <div class="feed-hdr">
-        <div class="feed-avatar" style="background:${colour}">${initial}</div>
-        <span class="feed-user">${d.username||"unknown"}</span>
+        <div class="feed-avatar" style="background:${colour};cursor:pointer" onclick="viewProfile('${p.user_id}')">${initial}</div>
+        <span class="feed-user" style="cursor:pointer" onclick="viewProfile('${p.user_id}')">${d.username||"unknown"}</span>
         <span class="feed-time">${timeAgo(p.created_at)}</span>
         ${isOwn?`<button class="del-set" style="margin-left:4px" onclick="deleteFeedPost('${p.id}')">×</button>`:""}
       </div>
@@ -3352,6 +3441,409 @@ async function submitShareLift(){
 }
 
 // ══════════════════════════════════════════════════════
+//  PHONE AUTH
+// ══════════════════════════════════════════════════════
+function showPhone(){
+  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="phone-form"?"":"none";
+  });
+  document.getElementById("phone-step1").style.display="";
+  document.getElementById("phone-step2").style.display="none";
+  loginErr();
+}
+
+async function sendOTP(){
+  loginErr();
+  const phone=document.getElementById("phone-number").value.trim();
+  if(!phone||!phone.startsWith("+")){loginErr("Enter phone number with country code e.g. +447700900000");return;}
+  const {error}=await _sb.auth.signInWithOtp({phone});
+  if(error){loginErr(error.message);return;}
+  document.getElementById("phone-sent-to").textContent=phone;
+  document.getElementById("phone-step1").style.display="none";
+  document.getElementById("phone-step2").style.display="";
+  loginErr("Code sent!");
+}
+
+async function verifyOTP(){
+  loginErr();
+  const phone=document.getElementById("phone-number").value.trim();
+  const token=document.getElementById("phone-otp").value.trim();
+  if(!token||token.length!==6){loginErr("Enter the 6-digit code.");return;}
+  const {error}=await _sb.auth.verifyOtp({phone,token,type:"sms"});
+  if(error) loginErr(error.message);
+  // onAuthStateChange handles the rest
+}
+
+// ══════════════════════════════════════════════════════
+//  PROFILE SYNC — keeps profiles table in sync with metadata
+// ══════════════════════════════════════════════════════
+async function syncProfile(user){
+  const meta=user.user_metadata||{};
+  if(!meta.display_name) return; // not complete yet
+  const payload={
+    user_id:user.id,
+    username:meta.display_name,
+    colour:meta.colour||PRESETS[0],
+    pr_bench:meta.pr||null,
+    pr_squat:meta.pr_squat||null,
+    pr_dl:meta.pr_dl||null,
+    public_stats:true,
+    updated_at:new Date().toISOString()
+  };
+  await _sb.from("profiles").upsert(payload,{onConflict:"user_id"}).catch(()=>{});
+}
+
+// ══════════════════════════════════════════════════════
+//  LINK ACCOUNTS
+// ══════════════════════════════════════════════════════
+async function openLinkAccounts(){
+  const {data:{user}}=await _sb.auth.getUser();
+  const identities=user.identities||[];
+  const hasEmail=identities.some(i=>i.provider==="email");
+  const hasGoogle=identities.some(i=>i.provider==="google");
+  const hasPhone=identities.some(i=>i.provider==="phone");
+
+  let html="";
+
+  // Email/password
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)">
+    <div>
+      <div style="font-size:13px;font-weight:600">✉️ Email / Password</div>
+      <div style="font-size:11px;color:var(--mu)">${hasEmail?(user.email||"linked"):"Not linked"}</div>
+    </div>
+    ${hasEmail
+      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
+      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
+          onclick="linkEmail()">Link</button>`}
+  </div>`;
+
+  // Google
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)">
+    <div>
+      <div style="font-size:13px;font-weight:600">🔵 Google</div>
+      <div style="font-size:11px;color:var(--mu)">${hasGoogle?"Linked":"Not linked"}</div>
+    </div>
+    ${hasGoogle
+      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
+      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
+          onclick="linkGoogle()">Link</button>`}
+  </div>`;
+
+  // Phone
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+    <div>
+      <div style="font-size:13px;font-weight:600">📱 Phone</div>
+      <div style="font-size:11px;color:var(--mu)">${hasPhone?(user.phone||"linked"):"Not linked"}</div>
+    </div>
+    ${hasPhone
+      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
+      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
+          onclick="linkPhone()">Link</button>`}
+  </div>`;
+
+  // Data priority section — only if multiple identities
+  if(identities.length>1){
+    html+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:6px">Data Priority</div>
+      <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
+        If you had data under a different sign-in method before linking, choose which data to keep.
+      </p>
+      <select id="merge-priority" style="margin-bottom:8px">
+        <option value="keep">Keep current data (default)</option>
+        <option value="newest">Use most recently updated</option>
+        <option value="manual">Let me review both</option>
+      </select>
+      <button class="save-btn" style="margin-top:0;font-size:9px"
+        onclick="applyDataPriority()">Apply</button>
+    </div>`;
+  }
+
+  document.getElementById("mo-link-content").innerHTML=html;
+  openModal("mo-link");
+}
+
+async function linkEmail(){
+  closeModal("mo-link");
+  const email=prompt("Email address to link:");
+  if(!email) return;
+  const password=prompt("Set a password for this email:");
+  if(!password||password.length<6){alert("Password must be at least 6 characters.");return;}
+  const {error}=await _sb.auth.linkIdentity({provider:"email",email,password});
+  if(error) alert(error.message);
+  else{alert("Email linked!");openLinkAccounts();}
+}
+
+async function linkGoogle(){
+  closeModal("mo-link");
+  const {error}=await _sb.auth.linkIdentity({provider:"google",options:{redirectTo:window.location.href}});
+  if(error) alert(error.message);
+}
+
+async function linkPhone(){
+  closeModal("mo-link");
+  const phone=prompt("Phone number to link (with country code e.g. +447700900000):");
+  if(!phone) return;
+  const {error}=await _sb.auth.linkIdentity({provider:"phone",phone});
+  if(error){alert(error.message);return;}
+  const code=prompt("Enter the verification code sent to "+phone+":");
+  if(!code) return;
+  const {error:e2}=await _sb.auth.verifyOtp({phone,token:code,type:"phone_change"});
+  if(e2) alert(e2.message);
+  else{alert("Phone linked!");openLinkAccounts();}
+}
+
+async function applyDataPriority(){
+  const choice=document.getElementById("merge-priority").value;
+  if(choice==="keep"){closeModal("mo-link");return;}
+  if(choice==="newest"){
+    alert("Keeping most recently updated data — no action needed, your current session has the latest.");
+    closeModal("mo-link");return;
+  }
+  if(choice==="manual"){
+    closeModal("mo-link");
+    // Show merge modal with current vs possible other data
+    document.getElementById("mo-merge-content").innerHTML=`
+      <p style="font-size:12px;color:var(--mu)">
+        Manual merge compares your current data against any data stored under a previously separate account with the same email. This is an advanced operation.
+      </p>
+      <div style="margin-top:10px;font-size:11px">
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer">
+          <input type="radio" name="merge" value="current" checked> Keep current account data
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="radio" name="merge" value="other"> Use other account's data
+        </label>
+      </div>`;
+    openModal("mo-merge");
+  }
+}
+
+function confirmMerge(){
+  const choice=document.querySelector('input[name="merge"]:checked')?.value;
+  if(choice==="other"){
+    alert("To fully migrate data from another account, use the SQL migration guide — run UPDATE queries substituting the old UUID with your new one.");
+  }
+  closeModal("mo-merge");
+}
+
+// ══════════════════════════════════════════════════════
+//  FRIENDS & PROFILES
+// ══════════════════════════════════════════════════════
+let _viewingProfile=null; // {user_id, username, friendship_status}
+
+async function buildFriends(){
+  const container=document.getElementById("page-friends");
+  container.innerHTML=`
+  <div class="hero" style="padding-top:12px">
+    <h1 style="font-size:clamp(26px,5vw,44px)">FRIENDS</h1>
+    <p class="hero-sub">Find lifters, see their stats, follow their progress</p>
+  </div>
+  <button class="save-btn" style="margin-bottom:14px" onclick="openModal('mo-find-users')">🔍 Find Users</button>
+  <div id="friends-list"><p style="color:var(--mu);font-size:12px">Loading…</p></div>
+  <div class="sec" style="margin-top:16px">Pending Requests</div>
+  <div id="pending-list"><p style="color:var(--mu);font-size:12px">Loading…</p></div>`;
+
+  // Fetch friendships
+  const {data:friendships}=await _sb.from("friendships").select("*")
+    .or(`requester_id.eq.${currentId},addressee_id.eq.${currentId}`);
+
+  const accepted=(friendships||[]).filter(f=>f.status==="accepted");
+  const pendingIn=(friendships||[]).filter(f=>f.status==="pending"&&f.addressee_id===currentId);
+  const pendingOut=(friendships||[]).filter(f=>f.status==="pending"&&f.requester_id===currentId);
+
+  // Get friend profile data
+  const friendIds=accepted.map(f=>f.requester_id===currentId?f.addressee_id:f.requester_id);
+  let friendProfiles=[];
+  if(friendIds.length){
+    const {data}=await _sb.from("profiles").select("*").in("user_id",friendIds);
+    friendProfiles=data||[];
+  }
+
+  const friendsList=document.getElementById("friends-list");
+  if(!friendProfiles.length&&!pendingOut.length){
+    friendsList.innerHTML=`<p style="color:var(--mu);font-size:12px">No friends yet — search for users above.</p>`;
+  } else {
+    let html=friendProfiles.map(p=>`
+      <div class="feed-card" style="cursor:pointer" onclick="viewProfile('${p.user_id}')">
+        <div class="feed-hdr">
+          <div class="feed-avatar" style="background:${p.colour||"#e8ff00"}">${(p.username||"?")[0].toUpperCase()}</div>
+          <span class="feed-user">${p.username}</span>
+          <button class="del-set" style="margin-left:auto" onclick="event.stopPropagation();removeFriend('${p.user_id}','${p.username}')">×</button>
+        </div>
+        ${p.public_stats?`<div style="display:flex;gap:10px;font-size:11px;color:var(--mu)">
+          ${p.pr_bench?`<span>🏋️ B: <strong style="color:var(--tx)">${p.pr_bench}kg</strong></span>`:""}
+          ${p.pr_squat?`<span>S: <strong style="color:var(--tx)">${p.pr_squat}kg</strong></span>`:""}
+          ${p.pr_dl?`<span>D: <strong style="color:var(--tx)">${p.pr_dl}kg</strong></span>`:""}
+        </div>`:`<div style="font-size:11px;color:var(--mu)">Stats hidden</div>`}
+      </div>`).join("");
+    if(pendingOut.length){
+      html+=`<p style="font-size:11px;color:var(--mu);margin-top:4px">${pendingOut.length} pending request${pendingOut.length>1?"s":""} sent</p>`;
+    }
+    friendsList.innerHTML=html;
+  }
+
+  // Pending incoming
+  const pendingList=document.getElementById("pending-list");
+  if(!pendingIn.length){
+    pendingList.innerHTML=`<p style="color:var(--mu);font-size:12px">No pending requests.</p>`;
+  } else {
+    const requesterIds=pendingIn.map(f=>f.requester_id);
+    const {data:reqProfiles}=await _sb.from("profiles").select("*").in("user_id",requesterIds);
+    pendingList.innerHTML=(reqProfiles||[]).map(p=>`
+      <div class="feed-card">
+        <div class="feed-hdr">
+          <div class="feed-avatar" style="background:${p.colour||"#e8ff00"}">${(p.username||"?")[0].toUpperCase()}</div>
+          <span class="feed-user">${p.username}</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="save-btn" style="margin:0;padding:5px 12px;font-size:9px"
+            onclick="respondFriend('${p.user_id}','accepted')">Accept</button>
+          <button class="save-btn" style="margin:0;padding:5px 12px;font-size:9px;background:var(--red)"
+            onclick="respondFriend('${p.user_id}','blocked')">Decline</button>
+        </div>
+      </div>`).join("");
+  }
+}
+
+async function searchUsers(q){
+  const results=document.getElementById("find-user-results");
+  if(!q||q.length<2){results.innerHTML="";return;}
+  const {data}=await _sb.from("profiles").select("*")
+    .ilike("username",`%${q}%`).neq("user_id",currentId).limit(10);
+  if(!data||!data.length){results.innerHTML=`<p style="color:var(--mu);font-size:12px;padding:8px">No users found.</p>`;return;}
+
+  // Check existing friendships
+  const ids=data.map(p=>p.user_id);
+  const {data:fs}=await _sb.from("friendships").select("*")
+    .or(`requester_id.eq.${currentId},addressee_id.eq.${currentId}`);
+  const fsMap={};
+  (fs||[]).forEach(f=>{
+    const other=f.requester_id===currentId?f.addressee_id:f.requester_id;
+    fsMap[other]=f.status+(f.requester_id===currentId?"_sent":"_recv");
+  });
+
+  results.innerHTML=data.map(p=>{
+    const fStatus=fsMap[p.user_id];
+    let btn="";
+    if(!fStatus) btn=`<button class="save-btn" style="margin:0;padding:4px 10px;font-size:9px" onclick="addFriend('${p.user_id}','${p.username}')">+ Add</button>`;
+    else if(fStatus==="accepted_sent"||fStatus==="accepted_recv") btn=`<span style="font-size:10px;color:var(--gn)">Friends</span>`;
+    else if(fStatus==="pending_sent") btn=`<span style="font-size:10px;color:var(--mu)">Requested</span>`;
+    else if(fStatus==="pending_recv") btn=`<button class="save-btn" style="margin:0;padding:4px 10px;font-size:9px" onclick="respondFriend('${p.user_id}','accepted')">Accept</button>`;
+
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);cursor:pointer"
+        onclick="viewProfile('${p.user_id}')">
+      <div class="feed-avatar" style="background:${p.colour||"#e8ff00"};width:28px;height:28px;font-size:12px">${(p.username||"?")[0].toUpperCase()}</div>
+      <span style="flex:1;font-size:13px;font-weight:600">${p.username}</span>
+      ${p.public_stats&&(p.pr_bench||p.pr_squat||p.pr_dl)?`<span style="font-size:10px;color:var(--mu)">B:${p.pr_bench||"—"} S:${p.pr_squat||"—"} D:${p.pr_dl||"—"}</span>`:""}
+      ${btn}
+    </div>`;
+  }).join("");
+}
+
+async function addFriend(userId,username){
+  const {error}=await _sb.from("friendships").insert({requester_id:currentId,addressee_id:userId,status:"pending"});
+  if(error) alert(error.message);
+  else{
+    // Refresh results
+    searchUsers(document.getElementById("find-user-input").value);
+    alert(`Friend request sent to ${username}!`);
+  }
+}
+
+async function respondFriend(requesterId,status){
+  await _sb.from("friendships").update({status})
+    .eq("requester_id",requesterId).eq("addressee_id",currentId);
+  if(currentMain==="friends") buildFriends();
+}
+
+async function removeFriend(userId,username){
+  if(!confirm(`Remove ${username} from friends?`)) return;
+  await _sb.from("friendships").delete()
+    .or(`and(requester_id.eq.${currentId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentId})`);
+  buildFriends();
+}
+
+async function viewProfile(userId){
+  // Fetch profile
+  const {data:profile}=await _sb.from("profiles").select("*").eq("user_id",userId).single();
+  if(!profile){alert("Profile not found.");return;}
+
+  // Check friendship status
+  const {data:fs}=await _sb.from("friendships").select("*")
+    .or(`and(requester_id.eq.${currentId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentId})`)
+    .maybeSingle();
+
+  _viewingProfile={user_id:userId,username:profile.username,friendship:fs};
+
+  // Fetch their recent feed posts
+  const {data:posts}=await _sb.from("shared_lifts")
+    .select("*").eq("user_id",userId).order("created_at",{ascending:false}).limit(5);
+
+  const a=ca();
+  const colour=profile.colour||"#e8ff00";
+  const initial=(profile.username||"?")[0].toUpperCase();
+
+  let html=`
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <div class="feed-avatar" style="background:${colour};width:48px;height:48px;font-size:22px">${initial}</div>
+    <div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px">${profile.username}</div>
+      <div style="font-size:11px;color:var(--mu)">Member since ${new Date(profile.created_at).toLocaleDateString("en-GB",{month:"short",year:"numeric"})}</div>
+    </div>
+  </div>`;
+
+  if(profile.public_stats){
+    html+=`<div class="stats" style="margin-bottom:14px">
+      ${profile.pr_bench?`<div class="sc"><div class="l">Bench</div><div class="v">${profile.pr_bench}kg</div></div>`:""}
+      ${profile.pr_squat?`<div class="sc"><div class="l">Squat</div><div class="v">${profile.pr_squat}kg</div></div>`:""}
+      ${profile.pr_dl?`<div class="sc"><div class="l">Deadlift</div><div class="v">${profile.pr_dl}kg</div></div>`:""}
+    </div>`;
+  } else {
+    html+=`<p style="font-size:11px;color:var(--mu);margin-bottom:14px">This user has hidden their stats.</p>`;
+  }
+
+  if(posts&&posts.length){
+    html+=`<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:8px">Recent Lifts</div>`;
+    html+=posts.map(p=>{
+      const d=p.data||{};
+      const setsHtml=(d.sets||[]).map((s,i)=>`<div class="feed-set${i===d.best_set_idx?" best":""}">${s.wt}kg×${s.reps}${i===d.best_set_idx?" 🏆":""}</div>`).join("");
+      return `<div style="background:var(--sf2);border-radius:4px;padding:8px 10px;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px">${d.exercise||"Lift"} <span style="color:var(--mu);font-weight:400">${timeAgo(p.created_at)}</span></div>
+        <div class="feed-sets" style="margin-bottom:0">${setsHtml}</div>
+        ${d.caption?`<div style="font-size:10px;color:var(--mu);margin-top:4px;font-style:italic">"${d.caption}"</div>`:""}
+      </div>`;
+    }).join("");
+  }
+
+  document.getElementById("mo-profile-content").innerHTML=html;
+
+  // Set friend button state
+  const friendBtn=document.getElementById("mo-profile-friend-btn");
+  if(userId===currentId){friendBtn.style.display="none";}
+  else if(!fs){friendBtn.textContent="+ Add Friend";friendBtn.style.display="";}
+  else if(fs.status==="accepted"){friendBtn.textContent="Remove Friend";friendBtn.style.background="var(--red)";friendBtn.style.display="";}
+  else if(fs.status==="pending"&&fs.requester_id===currentId){friendBtn.textContent="Request Sent";friendBtn.disabled=true;friendBtn.style.display="";}
+  else if(fs.status==="pending"&&fs.addressee_id===currentId){friendBtn.textContent="Accept Request";friendBtn.style.display="";}
+  else{friendBtn.style.display="none";}
+
+  openModal("mo-profile");
+}
+
+async function toggleFriend(){
+  if(!_viewingProfile) return;
+  const {user_id,username,friendship:fs}=_viewingProfile;
+  if(!fs){
+    await addFriend(user_id,username);
+  } else if(fs.status==="accepted"){
+    closeModal("mo-profile");
+    await removeFriend(user_id,username);
+  } else if(fs.status==="pending"&&fs.addressee_id===currentId){
+    await respondFriend(fs.requester_id,"accepted");
+    closeModal("mo-profile");
+  }
+}
+
+// ══════════════════════════════════════════════════════
 //  INIT — driven by Supabase auth session
 // ══════════════════════════════════════════════════════
 async function bootApp(session){
@@ -3402,6 +3894,9 @@ async function bootApp(session){
 
   // Load data
   await Promise.all([dbFetch(currentId),bwFetch(currentId),progFetch(currentId)]);
+
+  // Sync public profile table
+  syncProfile(user).catch(()=>{});
 
   // If PIN is in metadata, make sure it's reflected in db
   if(meta.pin&&!db[currentId]["__pin__"]) db[currentId]["__pin__"]=meta.pin;
