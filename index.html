@@ -332,8 +332,10 @@ select{cursor:pointer;}
 /* FEED */
 .feed-card{background:var(--sf);border-radius:6px;padding:14px;margin-bottom:10px;border:1px solid var(--bd);}
 .feed-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.feed-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
-  justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#000;flex-shrink:0;}
+.feed-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:18px;flex-shrink:0;border:2px solid var(--bd);}
+.feed-avatar.initial{font-family:'Bebas Neue',sans-serif;font-size:15px;color:#000;}
+.avatar-opt:hover{border-color:var(--ac)!important;background:var(--sf2);}
 .feed-user{font-weight:600;font-size:13px;}
 .feed-time{font-size:10px;color:var(--mu);margin-left:auto;}
 .feed-ex{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--ac);margin-bottom:5px;}
@@ -505,11 +507,29 @@ select{cursor:pointer;}
 <!-- MODALS -->
 <!-- PROFILE VIEW MODAL -->
 <div class="mo" id="mo-profile">
-  <div class="md" style="max-width:420px;width:min(420px,95vw)">
+  <div class="md" style="max-width:440px;width:min(440px,95vw);padding:0;overflow:hidden">
     <div id="mo-profile-content"></div>
-    <div class="md-btns" style="margin-top:14px">
+    <div class="md-btns" style="margin:0;padding:14px 16px;border-top:1px solid var(--bd)">
       <button class="mb sec" onclick="closeModal('mo-profile')">Close</button>
       <button class="mb pri" id="mo-profile-friend-btn" onclick="toggleFriend()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- AVATAR PICKER MODAL -->
+<div class="mo" id="mo-avatar">
+  <div class="md">
+    <h2>Choose Avatar</h2>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:12px">Pick an emoji that represents you</p>
+    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:14px">
+      ${['💪','🏋️','🔥','⚡','🦁','🐺','🦅','🐉','🏆','👑','💀','🧠','🎯','🚀','⚔️','🛡️',
+         '🐻','🦊','🐯','🦍','🦈','🦾','🤖','👤','🌙','☀️','⭐','🌊','🗻','🌋','💎','🎭'].map(e=>
+        `<div onclick="selectAvatar('${e}')" style="font-size:24px;text-align:center;cursor:pointer;
+          padding:6px;border-radius:8px;border:2px solid transparent;transition:.15s"
+          class="avatar-opt">${e}</div>`).join('')}
+    </div>
+    <div class="md-btns">
+      <button class="mb sec" onclick="closeModal('mo-avatar')">Cancel</button>
     </div>
   </div>
 </div>
@@ -612,37 +632,83 @@ select{cursor:pointer;}
 </div>
 
 <div class="mo" id="mo-share-lift">
-  <div class="md" style="max-width:480px;width:min(480px,95vw)">
+  <div class="md" style="max-width:500px;width:min(500px,95vw)">
     <h2>Post to Feed</h2>
-    <p style="font-size:11px;color:var(--mu);margin-bottom:10px">
-      Choose what to share — visible to all users on Recent Lifts.
-    </p>
 
-    <div id="share-lift-sets" style="max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
-
-    <label style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:3px">Caption (optional)</label>
-    <textarea id="share-lift-caption" placeholder="Feeling strong today… hit a small PR on the e1RM"
-      style="min-height:50px;margin-bottom:10px"></textarea>
-
-    <label style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:6px">Also include</label>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;font-size:12px">
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
-        <input type="checkbox" id="share-include-e1rm" checked style="accent-color:var(--ac)">
-        Best e1RM for this exercise
-      </label>
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
-        <input type="checkbox" id="share-include-vol">
-        Session volume (total kg)
-      </label>
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
-        <input type="checkbox" id="share-include-rpe">
-        RPE values
-      </label>
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
-        <input type="checkbox" id="share-include-prog">
-        Program + week context
-      </label>
+    <!-- Post type selector -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button id="slt-btn-sets" class="save-btn" style="margin:0;font-size:9px;background:var(--ac);color:#000"
+        onclick="setShareType('sets')">🏋️ Sets</button>
+      <button id="slt-btn-pr" class="save-btn" style="margin:0;font-size:9px"
+        onclick="setShareType('pr')">🏆 PR</button>
+      <button id="slt-btn-bw" class="save-btn" style="margin:0;font-size:9px"
+        onclick="setShareType('bw')">⚖️ Bodyweight</button>
+      <button id="slt-btn-text" class="save-btn" style="margin:0;font-size:9px"
+        onclick="setShareType('text')">💬 Text Only</button>
     </div>
+
+    <!-- Sets section -->
+    <div id="slt-sets-section">
+      <div id="share-lift-sets" style="max-height:200px;overflow-y:auto;margin-bottom:8px"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:12px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="share-include-e1rm" checked style="accent-color:var(--ac)">
+          Show e1RM
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="share-include-rpe" style="accent-color:var(--ac)">
+          Show RPE
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="share-include-vol" style="accent-color:var(--ac)">
+          Show volume
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="share-include-prog" style="accent-color:var(--ac)">
+          Show program context
+        </label>
+      </div>
+    </div>
+
+    <!-- PR section -->
+    <div id="slt-pr-section" style="display:none;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Exercise</label>
+          <input type="text" id="slt-pr-ex" placeholder="e.g. Bench Press (Barbell)" style="text-align:left">
+        </div>
+        <div class="login-field">
+          <label>Weight (kg)</label>
+          <input type="number" id="slt-pr-wt" step="0.5" placeholder="e.g. 100">
+        </div>
+        <div class="login-field">
+          <label>Reps</label>
+          <input type="number" id="slt-pr-reps" placeholder="e.g. 1">
+        </div>
+        <div class="login-field">
+          <label>e1RM (optional)</label>
+          <input type="number" id="slt-pr-e1rm" step="0.1" placeholder="auto">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bodyweight section -->
+    <div id="slt-bw-section" style="display:none;margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="login-field">
+          <label>Weight (kg)</label>
+          <input type="number" id="slt-bw-wt" step="0.1" placeholder="e.g. 78.5">
+        </div>
+        <div class="login-field">
+          <label>Milestone (optional)</label>
+          <input type="text" id="slt-bw-milestone" placeholder="e.g. New low!">
+        </div>
+      </div>
+    </div>
+
+    <!-- Caption -->
+    <label style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:3px">Caption</label>
+    <textarea id="share-lift-caption" placeholder="Add a comment…" style="min-height:44px;margin-bottom:14px"></textarea>
 
     <div class="md-btns">
       <button class="mb sec" onclick="closeModal('mo-share-lift')">Cancel</button>
@@ -1534,9 +1600,8 @@ function requirePin(id,action){
 function renderChips(){
   document.getElementById("athlete-tabs").innerHTML=athletes.map(a=>`
     <div class="chip${a.id===currentId?" active":""}"
-      style="${a.id===currentId?`border-color:${a.colour};color:${a.colour};background:${a.colour}10`:""}"
-      onclick="switchAthlete('${a.id}')">
-      <span class="chip-dot" style="background:${a.colour}"></span>
+      style="cursor:default;${a.id===currentId?`border-color:${a.colour};color:${a.colour};background:${a.colour}10`:""}">
+      <span style="font-size:14px">${a.avatar_emoji||"💪"}</span>
       ${a.name}
     </div>`).join("");
 }
@@ -2485,8 +2550,8 @@ function buildBW(){
   const targetBW=parseFloat(get("target-bw"))||0;
   const heightM=parseFloat(get("height-m"))||1.83;
   const showAvg=get("bw-avg")==="1";
-  const privacy=!isPublicStats();
-  const mask=v=>privacy?"●●●":v;
+  const privacy=false; // always show your own BW data
+  const mask=v=>v;
 
   // Compute week averages
   let labels=[],vals=[];
@@ -3263,8 +3328,54 @@ function updatePublicStatsBtn(){
 }
 
 // ══════════════════════════════════════════════════════
-//  RECENT LIFTS FEED
+//  AVATAR
 // ══════════════════════════════════════════════════════
+const AVATAR_EMOJIS=['💪','🏋️','🔥','⚡','🦁','🐺','🦅','🐉','🏆','👑','💀','🧠','🎯','🚀','⚔️','🛡️',
+  '🐻','🦊','🐯','🦍','🦈','🦾','🤖','👤','🌙','☀️','⭐','🌊','🗻','🌋','💎','🎭'];
+
+function avatarHtml(emoji,colour,size=36,fontSize=18){
+  if(emoji&&emoji!=="?"){
+    return `<div class="feed-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:var(--sf2)">${emoji}</div>`;
+  }
+  // Fallback to initial
+  const initial="?";
+  return `<div class="feed-avatar initial" style="width:${size}px;height:${size}px;font-size:${Math.round(size*0.4)}px;background:${colour||"#e8ff00"}">${initial}</div>`;
+}
+
+function openAvatarPicker(){
+  const cur=_cachedMeta?.avatar_emoji||"";
+  document.querySelectorAll(".avatar-opt").forEach(el=>{
+    el.style.borderColor=el.textContent===cur?"var(--ac)":"transparent";
+    el.style.background=el.textContent===cur?"var(--sf2)":"";
+  });
+  openModal("mo-avatar");
+}
+
+async function selectAvatar(emoji){
+  closeModal("mo-avatar");
+  // Save to metadata and profiles table
+  await _sb.auth.updateUser({data:{avatar_emoji:emoji}});
+  if(_cachedMeta) _cachedMeta.avatar_emoji=emoji;
+  // Update profile table
+  _sb.from("profiles").update({avatar_emoji:emoji}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  // Update athlete chip
+  const a=ca();if(a){renderChips();updateDash();}
+}
+
+// ══════════════════════════════════════════════════════
+//  SHARE LIFT — POST TYPE SWITCHER
+// ══════════════════════════════════════════════════════
+let _shareLiftType="sets";
+
+function setShareType(type){
+  _shareLiftType=type;
+  ["sets","pr","bw","text"].forEach(t=>{
+    const btn=document.getElementById(`slt-btn-${t}`);
+    const sec=document.getElementById(`slt-${t}-section`);
+    if(btn) btn.style.cssText=`margin:0;font-size:9px;${t===type?"background:var(--ac);color:#000":""}`;
+    if(sec) sec.style.display=t===type&&t!=="text"?"":"none";
+  });
+}
 
 // State for the share lift modal
 let _shareLiftCtx=null; // {progId, wi, day}
@@ -3306,6 +3417,7 @@ async function buildFeed(){
     <h1 style="font-size:clamp(26px,5vw,44px)">RECENT<br><span>LIFTS</span></h1>
     <p class="hero-sub">What everyone's been moving</p>
   </div>
+  <button class="save-btn" style="margin-bottom:14px" onclick="openQuickPost()">✏️ Post Something</button>
   <div id="feed-list"><p class="feed-empty" style="color:var(--mu)">Loading…</p></div>`;
 
   const posts=await feedFetch();
@@ -3314,8 +3426,8 @@ async function buildFeed(){
   if(!posts.length){
     list.innerHTML=`<div class="feed-empty">
       <div style="font-size:32px;margin-bottom:8px">🏋️</div>
-      <div>No lifts posted yet.</div>
-      <div style="font-size:11px;margin-top:4px">Go to a session and tap 🏋️ Post to share a set.</div>
+      <div>No posts yet.</div>
+      <div style="font-size:11px;margin-top:4px">Tap ✏️ Post Something or use 🏋️ Post in a session.</div>
     </div>`;
     return;
   }
@@ -3324,37 +3436,59 @@ async function buildFeed(){
     const d=p.data||{};
     const isOwn=p.user_id===currentId;
     const colour=d.colour||"#e8ff00";
-    const initial=(d.username||"?")[0].toUpperCase();
+    const av=avatarHtml(d.avatar_emoji,colour,36,20);
 
-    // Sets display
-    const setsHtml=(d.sets||[]).map((s,i)=>{
-      const isBest=i===d.best_set_idx;
-      return `<div class="feed-set${isBest?" best":""}">
-        ${s.wt}kg × ${s.reps}${d.include_rpe&&s.rpe?` @ RPE${s.rpe}`:""}
-        ${isBest?" 🏆":""}
-      </div>`;
-    }).join("");
+    // Determine post type display
+    let bodyHtml="";
+    const type=d.type||"sets";
 
-    // Tags
+    if(type==="text"){
+      bodyHtml=`<div style="font-size:13px;color:var(--tx);line-height:1.6">${d.caption||""}</div>`;
+    } else if(type==="bw"){
+      const wt=d.sets?.[0]?.wt;
+      bodyHtml=`<div style="font-size:22px;font-family:'Bebas Neue',sans-serif;color:var(--ac)">${wt}kg</div>
+        ${d.bw_milestone?`<div style="font-size:12px;color:var(--mu)">${d.bw_milestone}</div>`:""}`;
+    } else {
+      // Sets post (or PR)
+      const setsHtml=(d.sets||[]).map((s,i)=>{
+        const isBest=i===d.best_set_idx;
+        return `<div class="feed-set${isBest?" best":""}">
+          ${s.wt}kg × ${s.reps||"1"}${d.include_rpe&&s.rpe?` @ RPE${s.rpe}`:""}
+          ${isBest?" 🏆":""}
+        </div>`;
+      }).join("");
+      bodyHtml=`<div class="feed-ex">${d.exercise||"Lift"}${d.is_pr?" 🏆 PR":""}</div>
+        <div class="feed-sets">${setsHtml}</div>`;
+    }
+
     const tags=[];
-    if(d.e1rm&&d.include_e1rm) tags.push(`e1RM ${parseFloat(d.e1rm).toFixed(1)}kg`);
-    if(d.volume&&d.include_vol) tags.push(`${d.volume.toLocaleString()}kg vol`);
+    if(d.e1rm&&d.include_e1rm&&type!=="text"&&type!=="bw") tags.push(`e1RM ${parseFloat(d.e1rm).toFixed(1)}kg`);
+    if(d.volume&&d.include_vol) tags.push(`${Math.round(d.volume).toLocaleString()}kg vol`);
     if(d.prog_context&&d.include_prog) tags.push(d.prog_context);
-    if(d.is_pr) tags.push("🏆 PR");
 
     return `<div class="feed-card">
       <div class="feed-hdr">
-        <div class="feed-avatar" style="background:${colour};cursor:pointer" onclick="viewProfile('${p.user_id}')">${initial}</div>
-        <span class="feed-user" style="cursor:pointer" onclick="viewProfile('${p.user_id}')">${d.username||"unknown"}</span>
-        <span class="feed-time">${timeAgo(p.created_at)}</span>
-        ${isOwn?`<button class="del-set" style="margin-left:4px" onclick="deleteFeedPost('${p.id}')">×</button>`:""}
+        <div style="cursor:pointer" onclick="viewProfile('${p.user_id}')">${av}</div>
+        <div style="flex:1">
+          <span class="feed-user" style="cursor:pointer" onclick="viewProfile('${p.user_id}')">${d.username||"unknown"}</span>
+          <span class="feed-time" style="display:block">${timeAgo(p.created_at)}</span>
+        </div>
+        ${isOwn?`<button class="del-set" onclick="deleteFeedPost('${p.id}')">×</button>`:""}
       </div>
-      <div class="feed-ex">${d.exercise||"Lift"}</div>
-      <div class="feed-sets">${setsHtml||"<span style='font-size:11px;color:var(--mu)'>No sets selected</span>"}</div>
+      ${bodyHtml}
       ${tags.length?`<div class="feed-tags">${tags.map(t=>`<span class="feed-tag">${t}</span>`).join("")}</div>`:""}
-      ${d.caption?`<div class="feed-note">"${d.caption}"</div>`:""}
+      ${d.caption&&type!=="text"?`<div class="feed-note">"${d.caption}"</div>`:""}
     </div>`;
   }).join("");
+}
+
+function openQuickPost(){
+  _shareLiftCtx=null;
+  _shareLiftType="text";
+  setShareType("text");
+  document.getElementById("share-lift-sets").innerHTML=`<p style="color:var(--mu);font-size:12px">Select 🏋️ Sets to pick from a session, or use another type above.</p>`;
+  document.getElementById("share-lift-caption").value="";
+  openModal("mo-share-lift");
 }
 
 async function deleteFeedPost(id){
@@ -3369,12 +3503,13 @@ function openShareLift(progId,wi,day){
   const exList=prog.data?.days?.[day]?.exercises||[];
 
   _shareLiftCtx={progId,wi:parseInt(wi),day,prog};
+  _shareLiftType="sets";
+  setShareType("sets");
 
   // Build set picker — one section per exercise
   let html="";
   exList.forEach((ex,exIdx)=>{
     const storedSets=parseInt(get(`p${progId}-w${wi}-${day}-ex${exIdx}-sets`))||ex.sets||3;
-    // Only show exercises that have data logged
     let hasSets=false;
     for(let s=0;s<storedSets;s++){
       if(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`)) hasSets=true;
@@ -3402,13 +3537,9 @@ function openShareLift(progId,wi,day){
     html+="</div>";
   });
 
-  if(!html){
-    alert("Log some sets first before posting to the feed.");
-    return;
-  }
+  if(!html) html=`<p style="color:var(--mu);font-size:12px">No logged sets in this session — switch to a different post type above.</p>`;
 
-  document.getElementById("share-lift-sets").innerHTML=html||
-    "<p style='color:var(--mu);font-size:12px'>No sets logged yet in this session.</p>";
+  document.getElementById("share-lift-sets").innerHTML=html;
   document.getElementById("share-lift-caption").value="";
   document.getElementById("share-include-e1rm").checked=true;
   document.getElementById("share-include-vol").checked=false;
@@ -3419,82 +3550,93 @@ function openShareLift(progId,wi,day){
 }
 
 async function submitShareLift(){
-  if(!_shareLiftCtx) return;
-  const {progId,wi,day,prog}=_shareLiftCtx;
   const a=ca();
-
-  // Gather checked sets — group by exercise
-  const checked=[...document.querySelectorAll("#share-lift-sets input[type=checkbox]:checked")];
-  if(!checked.length){
-    alert("Select at least one set to post.");
-    return;
-  }
-
-  // Group by exercise (data-ex attribute)
-  const byEx={};
-  checked.forEach(cb=>{
-    const exIdx=cb.dataset.ex;
-    if(!byEx[exIdx]) byEx[exIdx]=[];
-    byEx[exIdx].push({wt:cb.dataset.wt,reps:cb.dataset.reps,rpe:cb.dataset.rpe,e1rm:cb.dataset.e1rm});
-  });
-
-  // For now post the first exercise group (most common use case)
-  // If multiple exercises selected, we post them all as one combined post
-  const exIdx=Object.keys(byEx)[0];
-  const exName=prog.data?.days?.[day]?.exercises?.[parseInt(exIdx)]?.name||"Lift";
-  const sets=byEx[exIdx];
-
-  // Find best set by e1rm
-  let bestSetIdx=0;
-  sets.forEach((s,i)=>{if(parseFloat(s.e1rm)>parseFloat(sets[bestSetIdx].e1rm||0)) bestSetIdx=i;});
-
-  // Options
-  const includeE1rm=document.getElementById("share-include-e1rm").checked;
-  const includeVol=document.getElementById("share-include-vol").checked;
-  const includeRpe=document.getElementById("share-include-rpe").checked;
-  const includeProg=document.getElementById("share-include-prog").checked;
   const caption=document.getElementById("share-lift-caption").value.trim();
-
-  // Volume for this exercise
-  const storedSets=parseInt(get(`p${progId}-w${wi}-${day}-ex${exIdx}-sets`))||3;
-  let vol=0;
-  for(let s=0;s<storedSets;s++){
-    const w=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`));
-    const r=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-reps`));
-    if(w&&r) vol+=w*r;
-  }
-
-  const bestE1rm=sets[bestSetIdx].e1rm;
-  const allTimeBest=parseFloat(get("best-e1rm")||0);
-  const isPR=bestE1rm&&parseFloat(bestE1rm)>=allTimeBest-0.05&&allTimeBest>0;
-
-  const payload={
-    user_id:currentId,
-    data:{
-      username:a.name,
-      colour:a.colour||PRESETS[0],
-      exercise:exName,
-      sets,
-      best_set_idx:bestSetIdx,
-      e1rm:bestE1rm,
-      volume:vol>0?vol:null,
-      prog_context:includeProg?`${prog.name} · Week ${wi+1} · ${day}`:null,
-      include_e1rm:includeE1rm,
-      include_vol:includeVol,
-      include_rpe:includeRpe,
-      include_prog:includeProg,
-      caption:caption||null,
-      is_pr:isPR
-    }
+  const emoji=_cachedMeta?.avatar_emoji||"";
+  let postData={
+    username:a.name,
+    colour:a.colour||PRESETS[0],
+    avatar_emoji:emoji,
+    caption:caption||null,
+    type:_shareLiftType
   };
+
+  if(_shareLiftType==="sets"){
+    if(!_shareLiftCtx) return;
+    const {progId,wi,day,prog}=_shareLiftCtx;
+    const checked=[...document.querySelectorAll("#share-lift-sets input[type=checkbox]:checked")];
+    if(!checked.length){alert("Select at least one set.");return;}
+
+    const byEx={};
+    checked.forEach(cb=>{
+      const exIdx=cb.dataset.ex;
+      if(!byEx[exIdx]) byEx[exIdx]=[];
+      byEx[exIdx].push({wt:cb.dataset.wt,reps:cb.dataset.reps,rpe:cb.dataset.rpe,e1rm:cb.dataset.e1rm});
+    });
+    const exIdx=Object.keys(byEx)[0];
+    const exName=prog.data?.days?.[day]?.exercises?.[parseInt(exIdx)]?.name||"Lift";
+    const sets=byEx[exIdx];
+    let bestSetIdx=0;
+    sets.forEach((s,i)=>{if(parseFloat(s.e1rm)>parseFloat(sets[bestSetIdx].e1rm||0)) bestSetIdx=i;});
+
+    const includeVol=document.getElementById("share-include-vol").checked;
+    const storedSets=parseInt(get(`p${progId}-w${wi}-${day}-ex${exIdx}-sets`))||3;
+    let vol=0;
+    for(let s=0;s<storedSets;s++){
+      const w=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`));
+      const r=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-reps`));
+      if(w&&r) vol+=w*r;
+    }
+    const bestE1rm=sets[bestSetIdx].e1rm;
+    const allTimeBest=parseFloat(get("best-e1rm")||0);
+    const isPR=bestE1rm&&parseFloat(bestE1rm)>=allTimeBest-0.05&&allTimeBest>0;
+
+    postData={...postData,
+      exercise:exName,sets,best_set_idx:bestSetIdx,
+      e1rm:bestE1rm,
+      volume:vol>0&&includeVol?vol:null,
+      prog_context:document.getElementById("share-include-prog").checked?`${prog.name} · Week ${wi+1} · ${day}`:null,
+      include_e1rm:document.getElementById("share-include-e1rm").checked,
+      include_vol:includeVol,
+      include_rpe:document.getElementById("share-include-rpe").checked,
+      include_prog:document.getElementById("share-include-prog").checked,
+      is_pr:isPR
+    };
+
+  } else if(_shareLiftType==="pr"){
+    const ex=document.getElementById("slt-pr-ex").value.trim();
+    const wt=parseFloat(document.getElementById("slt-pr-wt").value);
+    const reps=parseFloat(document.getElementById("slt-pr-reps").value);
+    const e1rmVal=parseFloat(document.getElementById("slt-pr-e1rm").value)||e1rm(wt,reps);
+    if(!ex||!wt){alert("Enter exercise and weight.");return;}
+    postData={...postData,exercise:ex,
+      sets:[{wt:String(wt),reps:String(reps||1),rpe:"",e1rm:e1rmVal?e1rmVal.toFixed(1):""}],
+      best_set_idx:0,e1rm:e1rmVal?e1rmVal.toFixed(1):null,is_pr:true,
+      include_e1rm:true,include_rpe:false,include_vol:false,include_prog:false
+    };
+
+  } else if(_shareLiftType==="bw"){
+    const wt=parseFloat(document.getElementById("slt-bw-wt").value);
+    const milestone=document.getElementById("slt-bw-milestone").value.trim();
+    if(!wt){alert("Enter your weight.");return;}
+    postData={...postData,exercise:"Bodyweight",
+      sets:[{wt:String(wt),reps:"",rpe:"",e1rm:""}],best_set_idx:0,
+      bw_milestone:milestone||null,
+      include_e1rm:false,include_rpe:false,include_vol:false,include_prog:false
+    };
+
+  } else if(_shareLiftType==="text"){
+    if(!caption){alert("Write something to post.");return;}
+    postData={...postData,exercise:null,sets:[],best_set_idx:-1,
+      include_e1rm:false,include_rpe:false,include_vol:false,include_prog:false
+    };
+  }
 
   const btn=document.getElementById("share-lift-submit");
   btn.textContent="Posting…";btn.disabled=true;
-
   try{
-    await feedPost(payload);
+    await feedPost({user_id:currentId,data:postData});
     closeModal("mo-share-lift");
-    // Switch to feed tab
     showMain("feed",null);
     document.querySelectorAll(".mtab").forEach(t=>{
       t.classList.toggle("active",t.textContent.trim()==="Recent Lifts");
@@ -3519,7 +3661,8 @@ async function syncProfile(user){
     pr_bench:meta.pr||null,
     pr_squat:meta.pr_squat||null,
     pr_dl:meta.pr_dl||null,
-    public_stats:isPublicStats(), // respect current setting
+    public_stats:isPublicStats(),
+    avatar_emoji:meta.avatar_emoji||"💪",
     updated_at:new Date().toISOString()
   };
   const {error}=await _sb.from("profiles").upsert(payload,{onConflict:"user_id"});
@@ -3774,88 +3917,108 @@ async function removeFriend(userId,username){
 }
 
 async function viewProfile(userId){
-  // Try profiles table first
   let profile=null;
-  const {data,error}=await _sb.from("profiles").select("*").eq("user_id",userId).maybeSingle();
+  const {data}=await _sb.from("profiles").select("*").eq("user_id",userId).maybeSingle();
   if(data){
     profile=data;
   } else {
-    // Fall back — if viewing own profile, build from metadata
     if(userId===currentId){
       const a=ca();
-      profile={
-        user_id:userId,
-        username:a.name,
-        colour:a.colour||PRESETS[0],
-        pr_bench:a.pr||null,
-        pr_squat:a.pr_squat||null,
-        pr_dl:a.pr_dl||null,
-        public_stats:isPublicStats(),
-        created_at:new Date().toISOString()
-      };
-      // Trigger a sync so future lookups work
+      profile={user_id:userId,username:a.name,colour:a.colour||PRESETS[0],
+        pr_bench:a.pr||null,pr_squat:a.pr_squat||null,pr_dl:a.pr_dl||null,
+        public_stats:isPublicStats(),created_at:new Date().toISOString(),
+        avatar_emoji:_cachedMeta?.avatar_emoji||""};
       const {data:{user}}=await _sb.auth.getUser();
       syncProfile(user).catch(()=>{});
     } else {
-      alert("Profile not found — this user may not have completed their profile yet.");
-      return;
+      alert("Profile not found.");return;
     }
   }
 
-  // Check friendship status — two queries for reliability
   const {data:fsSent}=await _sb.from("friendships").select("*")
     .eq("requester_id",currentId).eq("addressee_id",userId).maybeSingle();
   const {data:fsRecv}=await _sb.from("friendships").select("*")
     .eq("requester_id",userId).eq("addressee_id",currentId).maybeSingle();
   const fs=fsSent||fsRecv||null;
-
   _viewingProfile={user_id:userId,username:profile.username,friendship:fs};
 
-  // Fetch their recent feed posts
   const {data:posts}=await _sb.from("shared_lifts")
-    .select("*").eq("user_id",userId).order("created_at",{ascending:false}).limit(5);
+    .select("*").eq("user_id",userId).order("created_at",{ascending:false}).limit(8);
 
-  const a=ca();
   const colour=profile.colour||"#e8ff00";
-  const initial=(profile.username||"?")[0].toUpperCase();
+  const av=avatarHtml(profile.avatar_emoji,colour,64,32);
+  const isOwn=userId===currentId;
 
+  // Header banner
   let html=`
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-    <div class="feed-avatar" style="background:${colour};width:48px;height:48px;font-size:22px">${initial}</div>
-    <div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px">${profile.username}</div>
-      <div style="font-size:11px;color:var(--mu)">Member since ${new Date(profile.created_at).toLocaleDateString("en-GB",{month:"short",year:"numeric"})}</div>
+  <div style="background:linear-gradient(135deg,${colour}22,${colour}08);
+    padding:20px 16px 16px;border-bottom:1px solid var(--bd)">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="position:relative">
+        ${av.replace('class="feed-avatar"','class="feed-avatar" style="width:64px;height:64px;font-size:32px;border:3px solid '+colour+'"')}
+        ${isOwn?`<div onclick="openAvatarPicker()" style="position:absolute;bottom:-2px;right:-2px;
+          width:20px;height:20px;border-radius:50%;background:var(--sf);border:1px solid var(--bd);
+          display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer"
+          title="Change avatar">✏️</div>`:""}
+      </div>
+      <div style="flex:1">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;line-height:1">${profile.username}</div>
+        <div style="font-size:11px;color:var(--mu);margin-top:2px">
+          Member since ${new Date(profile.created_at).toLocaleDateString("en-GB",{month:"short",year:"numeric"})}
+        </div>
+      </div>
     </div>
   </div>`;
 
-  if(profile.public_stats){
-    html+=`<div class="stats" style="margin-bottom:14px">
-      ${profile.pr_bench?`<div class="sc"><div class="l">Bench</div><div class="v">${profile.pr_bench}kg</div></div>`:""}
-      ${profile.pr_squat?`<div class="sc"><div class="l">Squat</div><div class="v">${profile.pr_squat}kg</div></div>`:""}
-      ${profile.pr_dl?`<div class="sc"><div class="l">Deadlift</div><div class="v">${profile.pr_dl}kg</div></div>`:""}
-    </div>`;
+  // Stats
+  if(profile.public_stats||isOwn){
+    const hasPRs=profile.pr_bench||profile.pr_squat||profile.pr_dl;
+    if(hasPRs){
+      html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--bd)">
+        ${[['Bench',profile.pr_bench],['Squat',profile.pr_squat],['Deadlift',profile.pr_dl]].map(([label,val])=>
+          `<div style="text-align:center;padding:12px 8px;${val?"":"opacity:.35"}">
+            <div style="font-size:18px;font-weight:700;color:${val?`var(--ac)`:"var(--mu)"}">${val?val+"kg":"—"}</div>
+            <div style="font-size:9px;letter-spacing:1px;color:var(--mu);margin-top:2px">${label}</div>
+          </div>`).join("")}
+      </div>`;
+    }
   } else {
-    html+=`<p style="font-size:11px;color:var(--mu);margin-bottom:14px">This user has hidden their stats.</p>`;
+    html+=`<div style="padding:12px 16px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--mu)">Stats hidden</div>`;
   }
 
+  // Recent posts
+  html+=`<div style="padding:12px 16px">`;
   if(posts&&posts.length){
-    html+=`<div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:8px">Recent Lifts</div>`;
+    html+=`<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:10px">Recent Activity</div>`;
     html+=posts.map(p=>{
       const d=p.data||{};
-      const setsHtml=(d.sets||[]).map((s,i)=>`<div class="feed-set${i===d.best_set_idx?" best":""}">${s.wt}kg×${s.reps}${i===d.best_set_idx?" 🏆":""}</div>`).join("");
-      return `<div style="background:var(--sf2);border-radius:4px;padding:8px 10px;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px">${d.exercise||"Lift"} <span style="color:var(--mu);font-weight:400">${timeAgo(p.created_at)}</span></div>
-        <div class="feed-sets" style="margin-bottom:0">${setsHtml}</div>
-        ${d.caption?`<div style="font-size:10px;color:var(--mu);margin-top:4px;font-style:italic">"${d.caption}"</div>`:""}
+      const type=d.type||"sets";
+      let body="";
+      if(type==="text"){
+        body=`<span style="color:var(--tx)">${d.caption||""}</span>`;
+      } else if(type==="bw"){
+        body=`<span style="color:var(--ac);font-weight:700">${d.sets?.[0]?.wt}kg</span> bodyweight${d.bw_milestone?` · ${d.bw_milestone}`:""}`;
+      } else {
+        const best=d.sets?.[d.best_set_idx];
+        body=`<span style="color:var(--ac);font-weight:600">${d.exercise||"Lift"}</span>
+          ${best?`<span style="color:var(--mu)"> · ${best.wt}kg×${best.reps||1}</span>`:""}
+          ${d.is_pr?" 🏆":""}`;
+      }
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:6px 0;
+        border-bottom:1px solid var(--bd);font-size:12px">
+        <span style="flex:1">${body}</span>
+        <span style="font-size:10px;color:var(--mu);white-space:nowrap">${timeAgo(p.created_at)}</span>
       </div>`;
     }).join("");
+  } else {
+    html+=`<p style="font-size:12px;color:var(--mu)">No posts yet.</p>`;
   }
+  html+=`</div>`;
 
   document.getElementById("mo-profile-content").innerHTML=html;
 
-  // Set friend button state
   const friendBtn=document.getElementById("mo-profile-friend-btn");
-  if(userId===currentId){friendBtn.style.display="none";}
+  if(isOwn){friendBtn.style.display="none";}
   else if(!fs){friendBtn.textContent="+ Add Friend";friendBtn.style.display="";}
   else if(fs.status==="accepted"){friendBtn.textContent="Remove Friend";friendBtn.style.background="var(--red)";friendBtn.style.display="";}
   else if(fs.status==="pending"&&fs.requester_id===currentId){friendBtn.textContent="Request Sent";friendBtn.disabled=true;friendBtn.style.display="";}
@@ -4045,7 +4208,8 @@ async function bootApp(session){
     pr_dl:parseFloat(meta.pr_dl)||0,
     height_cm:parseFloat(meta.height_cm)||0,
     weight_kg:parseFloat(meta.weight_kg)||0,
-    colour:meta.colour||PRESETS[0]
+    colour:meta.colour||PRESETS[0],
+    avatar_emoji:meta.avatar_emoji||"💪"
   };
   athletes=[userAthlete];
   currentId=user.id;
