@@ -328,6 +328,27 @@ select{cursor:pointer;}
 .login-reset{font-size:10px;color:var(--mu);text-align:center;margin-top:6px;cursor:pointer;}
 .login-reset:hover{color:var(--tx);}
 #app{display:none;}
+
+/* FEED */
+.feed-card{background:var(--sf);border-radius:6px;padding:14px;margin-bottom:10px;border:1px solid var(--bd);}
+.feed-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.feed-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#000;flex-shrink:0;}
+.feed-user{font-weight:600;font-size:13px;}
+.feed-time{font-size:10px;color:var(--mu);margin-left:auto;}
+.feed-ex{font-family:'Bebas Neue',sans-serif;font-size:17px;color:var(--ac);margin-bottom:5px;}
+.feed-sets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.feed-set{background:var(--sf2);border-radius:3px;padding:4px 8px;font-size:11px;border:1px solid var(--bd);}
+.feed-set.best{border-color:var(--or);color:var(--or);}
+.feed-note{font-size:11px;color:var(--mu);line-height:1.6;margin-top:5px;font-style:italic;}
+.feed-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.feed-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;
+  border-radius:10px;background:rgba(232,255,0,.08);color:var(--ac);border:1px solid rgba(232,255,0,.2);}
+.feed-empty{text-align:center;padding:40px 20px;color:var(--mu);font-size:13px;}
+.share-set-row{display:flex;align-items:center;gap:8px;padding:6px 0;
+  border-bottom:1px solid var(--bd);font-size:12px;}
+.share-set-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--ac);}
+@media(max-width:480px){.body-wrap{grid-template-columns:1fr;}.stats{grid-template-columns:repeat(2,1fr);}}
 </style>
 </head>
 <body>
@@ -363,8 +384,7 @@ select{cursor:pointer;}
       <div class="login-field">
         <label>Username <span id="uname-status" style="float:right;font-size:10px"></span></label>
         <input type="text" id="signup-name" placeholder="e.g. josh" maxlength="20"
-          oninput="checkUsername(this.value)"
-          style="text-transform:lowercase">
+          oninput="checkUsername(this.value)" style="text-transform:lowercase">
         <div style="font-size:10px;color:var(--mu);margin-top:3px">Letters, numbers, underscores only.</div>
       </div>
       <div class="login-field">
@@ -378,25 +398,25 @@ select{cursor:pointer;}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Bench PR (kg)</label>
-          <input type="number" id="signup-pr-bench" step="0.5" placeholder="e.g. 65">
+          <input type="number" id="signup-pr-bench" step="0.5" placeholder="e.g. 65" min="0">
         </div>
         <div class="login-field">
           <label>Squat PR (kg)</label>
-          <input type="number" id="signup-pr-squat" step="0.5" placeholder="e.g. 100">
+          <input type="number" id="signup-pr-squat" step="0.5" placeholder="e.g. 100" min="0">
         </div>
         <div class="login-field">
           <label>Deadlift PR (kg)</label>
-          <input type="number" id="signup-pr-dl" step="0.5" placeholder="e.g. 120">
+          <input type="number" id="signup-pr-dl" step="0.5" placeholder="e.g. 120" min="0">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="login-field">
           <label>Height (cm)</label>
-          <input type="number" id="signup-height" step="1" placeholder="e.g. 183">
+          <input type="number" id="signup-height" step="1" placeholder="e.g. 183" min="100" max="250">
         </div>
         <div class="login-field">
           <label>Weight (kg)</label>
-          <input type="number" id="signup-weight" step="0.5" placeholder="e.g. 78.8">
+          <input type="number" id="signup-weight" step="0.5" placeholder="e.g. 78.8" min="30" max="300">
         </div>
       </div>
       <div class="login-field">
@@ -405,9 +425,8 @@ select{cursor:pointer;}
           <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
             placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
           <input type="password" id="signup-pin2" inputmode="numeric" maxlength="4"
-            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+            placeholder="confirm" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
         </div>
-        <div style="font-size:10px;color:var(--mu);margin-top:3px">Enter twice to confirm. Optional — leave blank to skip.</div>
       </div>
       <button class="login-btn pri" onclick="signUp()">Create Account</button>
       <button class="login-btn sec" onclick="showLogin()">Back to Sign In</button>
@@ -542,6 +561,46 @@ select{cursor:pointer;}
   </div>
 </div>
 
+<div class="mo" id="mo-share-lift">
+  <div class="md" style="max-width:480px;width:min(480px,95vw)">
+    <h2>Post to Feed</h2>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:10px">
+      Choose what to share — visible to all users on Recent Lifts.
+    </p>
+
+    <div id="share-lift-sets" style="max-height:220px;overflow-y:auto;margin-bottom:10px"></div>
+
+    <label style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:3px">Caption (optional)</label>
+    <textarea id="share-lift-caption" placeholder="Feeling strong today… hit a small PR on the e1RM"
+      style="min-height:50px;margin-bottom:10px"></textarea>
+
+    <label style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);display:block;margin-bottom:6px">Also include</label>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="share-include-e1rm" checked style="accent-color:var(--ac)">
+        Best e1RM for this exercise
+      </label>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="share-include-vol">
+        Session volume (total kg)
+      </label>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="share-include-rpe">
+        RPE values
+      </label>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="share-include-prog">
+        Program + week context
+      </label>
+    </div>
+
+    <div class="md-btns">
+      <button class="mb sec" onclick="closeModal('mo-share-lift')">Cancel</button>
+      <button class="mb pri" id="share-lift-submit" onclick="submitShareLift()">Post</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mo-add-program">
   <div class="md" style="max-width:500px;width:min(500px,95vw)">
     <h2>New Program</h2>
@@ -572,10 +631,9 @@ select{cursor:pointer;}
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="athlete-tabs" id="athlete-tabs"></div>
-  <button class="add-btn" onclick="openModal('mo-add-athlete')" title="Add athlete">+</button>
   <div class="tb-right">
     <span class="streak" id="streak-badge">🔥 0</span>
-    <button class="icon-btn" id="eye-btn" onclick="togglePrivacy()" title="Mask/unmask sensitive data (PIN required)">👁</button>
+    <button class="icon-btn" id="eye-btn" onclick="togglePublicStats()" title="Toggle whether others can see your PRs">👁</button>
     <button class="icon-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
     <div class="sync-wrap"><div class="sdot" id="sdot"></div><span id="stxt">—</span></div>
   </div>
@@ -589,6 +647,7 @@ select{cursor:pointer;}
   <div class="mtab" onclick="showMain('analytics',event)">Analytics</div>
   <div class="mtab" onclick="showMain('body',event)">Body</div>
   <div class="mtab" onclick="showMain('pr',event)">PR Tracker</div>
+  <div class="mtab" onclick="showMain('feed',event)">Recent Lifts</div>
 </div>
 
 <!-- SUB NAV (context-sensitive) -->
@@ -601,6 +660,7 @@ select{cursor:pointer;}
   <div id="page-analytics" class="page"></div>
   <div id="page-body" class="page"></div>
   <div id="page-pr" class="page"></div>
+  <div id="page-feed" class="page"></div>
 </main>
 
 <script>
@@ -717,23 +777,31 @@ async function signUp(){
   const username=document.getElementById("signup-name").value.trim().toLowerCase();
   const email=document.getElementById("signup-email").value.trim();
   const password=document.getElementById("signup-password").value;
-  const prBench=parseFloat(document.getElementById("signup-pr-bench").value)||0;
-  const prSquat=parseFloat(document.getElementById("signup-pr-squat").value)||0;
-  const prDL=parseFloat(document.getElementById("signup-pr-dl").value)||0;
-  const height=parseFloat(document.getElementById("signup-height").value)||0;
-  const weight=parseFloat(document.getElementById("signup-weight").value)||0;
+  const prBench=parseFloat(document.getElementById("signup-pr-bench").value);
+  const prSquat=parseFloat(document.getElementById("signup-pr-squat").value);
+  const prDL=parseFloat(document.getElementById("signup-pr-dl").value);
+  const height=parseFloat(document.getElementById("signup-height").value);
+  const weight=parseFloat(document.getElementById("signup-weight").value);
   const pin=document.getElementById("signup-pin").value;
   const pin2=document.getElementById("signup-pin2").value;
 
-  if(!username||!email||!password){loginErr("Fill in username, email and password.");return;}
+  // All fields required
+  if(!username) {loginErr("Choose a username.");return;}
   if(!/^[a-z0-9_]+$/.test(username)){loginErr("Username: letters, numbers, underscores only.");return;}
   if(username.length<2){loginErr("Username must be at least 2 characters.");return;}
-  if(password.length<6){loginErr("Password must be at least 6 characters.");return;}
-  if(pin&&pin!==pin2){loginErr("PINs don't match.");return;}
-  if(pin&&(pin.length!==4||!/^\d+$/.test(pin))){loginErr("PIN must be exactly 4 digits.");return;}
+  if(!email){loginErr("Enter your email.");return;}
+  if(!password||password.length<6){loginErr("Password must be at least 6 characters.");return;}
+  if(!prBench||prBench<=0){loginErr("Enter your bench PR.");return;}
+  if(!prSquat||prSquat<=0){loginErr("Enter your squat PR.");return;}
+  if(!prDL||prDL<=0){loginErr("Enter your deadlift PR.");return;}
+  if(!height||height<100||height>250){loginErr("Enter your height in cm (e.g. 183).");return;}
+  if(!weight||weight<30||weight>300){loginErr("Enter your weight in kg (e.g. 78.8).");return;}
+  if(!pin||pin.length!==4||!/^\d+$/.test(pin)){loginErr("Enter a 4-digit PIN.");return;}
+  if(pin!==pin2){loginErr("PINs don't match.");return;}
 
   const status=document.getElementById("uname-status").textContent;
   if(status==="✗ taken"){loginErr("That username is taken — choose another.");return;}
+  if(status==="checking…"||status===""){loginErr("Wait for username check to complete.");return;}
 
   const {data,error}=await _sb.auth.signUp({
     email,password,
@@ -741,7 +809,7 @@ async function signUp(){
       display_name:username,
       pr:prBench,pr_squat:prSquat,pr_dl:prDL,
       height_cm:height,weight_kg:weight,
-      colour:PRESETS[0],pin:pin||null
+      colour:PRESETS[0],pin
     }}
   });
   if(error){
@@ -1399,9 +1467,7 @@ async function switchAthlete(id){
   currentId=id;applyAccent(accent());
   await Promise.all([dbFetch(id),bwFetch(id),progFetch(id)]);
   applyTheme();renderChips();rerenderAll();updateDash();updateStreak();buildProgNav();
-  // Restore privacy state from db for this athlete
-  updatePrivacyBtn();
-  if(isPrivacyOn()) setTimeout(applyPrivacyMask,200);
+  updatePublicStatsBtn();
 }
 
 function confirmAddAthlete(){
@@ -1717,6 +1783,9 @@ function showMain(id,evt){
   } else if(id==="pr"){
     document.getElementById("page-pr").classList.add("active");
     buildPR();
+  } else if(id==="feed"){
+    document.getElementById("page-feed").classList.add("active");
+    buildFeed();
   }
 }
 
@@ -1735,7 +1804,7 @@ function updateDash(){
   const bestEx=get("best-e1rm-ex")||"";
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived);
-  const privacy=isPrivacyOn();
+  const privacy=!isPublicStats();
 
   // Sessions count from primary program
   let sessions=0,totalWks=0;
@@ -1816,6 +1885,9 @@ function updateDash(){
     <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:7px">Account</div>
     <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
       Signed in as <strong style="color:var(--tx)">${a.name}</strong>
+    </p>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
+      PRs visible to others: <strong style="color:${isPublicStats()?"var(--gn)":"var(--red)"}">${isPublicStats()?"Yes — tap 👁 to hide":"No — tap 🙈 to show"}</strong>
     </p>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="changeUsername()">Change Username</button>
@@ -2056,6 +2128,8 @@ function buildProgWeek(progId,subId){
             ${volDiff>=0?"+":""}${volDiff}% vs last week</div>`:""}
         </div>
         <button class="rt-btn" onclick="shareSession('${progId}',${wi},'${day}')">📤 Share</button>
+        <button class="rt-btn" style="color:var(--ac);border-color:rgba(232,255,0,.3)"
+          onclick="openShareLift('${progId}',${wi},'${day}')">🏋️ Post</button>
       </div>`;
     }
 
@@ -2355,7 +2429,7 @@ function buildBW(){
   const targetBW=parseFloat(get("target-bw"))||0;
   const heightM=parseFloat(get("height-m"))||1.83;
   const showAvg=get("bw-avg")==="1";
-  const privacy=isPrivacyOn();
+  const privacy=!isPublicStats();
   const mask=v=>privacy?"●●●":v;
 
   // Compute week averages
@@ -3003,70 +3077,278 @@ function rerenderAll(){
 }
 
 // ══════════════════════════════════════════════════════
-//  EYE / PRIVACY MASK
-//  Per-athlete, PIN required every time to toggle.
-//  State is permanent — stored in db, persists across
-//  sessions until explicitly changed.
+//  PUBLIC STATS TOGGLE
+//  Eye button controls whether other users can see
+//  your PR cards on the dashboard. PIN required to change.
 // ══════════════════════════════════════════════════════
+function isPublicStats(){return get("__public_stats__")!=="0";}// default ON
 
-function isPrivacyOn(){
-  return get("__privacy__")==="1";
-}
-
-function togglePrivacy(){
-  // Always require PIN — no session caching for privacy toggle
+function togglePublicStats(){
   if(hasPin(currentId)){
     pinBuf="";
-    openPin("verify",currentId,()=>doTogglePrivacy());
+    openPin("verify",currentId,()=>doTogglePublicStats());
   } else {
-    doTogglePrivacy();
+    doTogglePublicStats();
   }
 }
 
-function doTogglePrivacy(){
-  const nowOn=!isPrivacyOn();
-  set("__privacy__",nowOn?"1":"0");
-  updatePrivacyBtn();
-  applyPrivacyMask();
+function doTogglePublicStats(){
+  const nowOn=!isPublicStats();
+  set("__public_stats__",nowOn?"1":"0");
+  updatePublicStatsBtn();
+  updateDash();
 }
 
-function updatePrivacyBtn(){
+function updatePublicStatsBtn(){
   const btn=document.getElementById("eye-btn");
-  if(btn) btn.textContent=isPrivacyOn()?"🙈":"👁";
+  if(!btn) return;
+  const on=isPublicStats();
+  btn.textContent=on?"👁":"🙈";
+  btn.title=on?"Your PRs are visible to others — click to hide":"Your PRs are hidden from others — click to show";
 }
 
-function applyPrivacyMask(){
-  const on=isPrivacyOn();
-  // Mask all .mask-target display elements
-  document.querySelectorAll(".mask-target").forEach(el=>{
-    if(on){
-      if(!el.dataset.realVal) el.dataset.realVal=el.textContent;
-      el.textContent="●●●";
-    } else {
-      if(el.dataset.realVal!==undefined) el.textContent=el.dataset.realVal;
-    }
-  });
-  // Mask/unmask all number inputs
-  document.querySelectorAll("input[type=number]").forEach(el=>{
-    if(on){
-      if(el.dataset.realVal===undefined) el.dataset.realVal=el.value;
-      el.value="";el.placeholder="●●●";el.disabled=true;
-      el.style.color="var(--mu)";
-    } else {
-      if(el.dataset.realVal!==undefined){
-        el.value=el.dataset.realVal;
-        el.dataset.realVal=undefined;
-      }
-      el.placeholder="";el.disabled=false;
-      el.style.color="";
-    }
-  });
+// ══════════════════════════════════════════════════════
+//  RECENT LIFTS FEED
+// ══════════════════════════════════════════════════════
+
+// State for the share lift modal
+let _shareLiftCtx=null; // {progId, wi, day}
+
+async function feedFetch(){
+  try{
+    const {data,error}=await _sb.from("shared_lifts")
+      .select("*").order("created_at",{ascending:false}).limit(50);
+    if(error) throw error;
+    return data||[];
+  }catch{return [];}
 }
 
-// Reset privacy btn icon on athlete switch (state comes from db so reloads correctly)
-function resetPrivacy(){
-  // Privacy state loads from db on switchAthlete — just update button
-  setTimeout(updatePrivacyBtn, 100);
+async function feedPost(payload){
+  const {error}=await _sb.from("shared_lifts").insert(payload);
+  if(error) throw error;
+}
+
+async function feedDelete(id){
+  await _sb.from("shared_lifts").delete().eq("id",id).eq("user_id",currentId);
+}
+
+function timeAgo(iso){
+  const diff=Date.now()-new Date(iso).getTime();
+  const mins=Math.floor(diff/60000);
+  if(mins<1) return "just now";
+  if(mins<60) return mins+"m ago";
+  const hrs=Math.floor(mins/60);
+  if(hrs<24) return hrs+"h ago";
+  const days=Math.floor(hrs/24);
+  if(days<7) return days+"d ago";
+  return new Date(iso).toLocaleDateString();
+}
+
+async function buildFeed(){
+  const container=document.getElementById("page-feed");
+  container.innerHTML=`
+  <div class="hero" style="padding-top:12px">
+    <h1 style="font-size:clamp(26px,5vw,44px)">RECENT<br><span>LIFTS</span></h1>
+    <p class="hero-sub">What everyone's been moving</p>
+  </div>
+  <div id="feed-list"><p class="feed-empty" style="color:var(--mu)">Loading…</p></div>`;
+
+  const posts=await feedFetch();
+  const list=document.getElementById("feed-list");
+
+  if(!posts.length){
+    list.innerHTML=`<div class="feed-empty">
+      <div style="font-size:32px;margin-bottom:8px">🏋️</div>
+      <div>No lifts posted yet.</div>
+      <div style="font-size:11px;margin-top:4px">Go to a session and tap 🏋️ Post to share a set.</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML=posts.map(p=>{
+    const d=p.data||{};
+    const isOwn=p.user_id===currentId;
+    const colour=d.colour||"#e8ff00";
+    const initial=(d.username||"?")[0].toUpperCase();
+
+    // Sets display
+    const setsHtml=(d.sets||[]).map((s,i)=>{
+      const isBest=i===d.best_set_idx;
+      return `<div class="feed-set${isBest?" best":""}">
+        ${s.wt}kg × ${s.reps}${d.include_rpe&&s.rpe?` @ RPE${s.rpe}`:""}
+        ${isBest?" 🏆":""}
+      </div>`;
+    }).join("");
+
+    // Tags
+    const tags=[];
+    if(d.e1rm&&d.include_e1rm) tags.push(`e1RM ${parseFloat(d.e1rm).toFixed(1)}kg`);
+    if(d.volume&&d.include_vol) tags.push(`${d.volume.toLocaleString()}kg vol`);
+    if(d.prog_context&&d.include_prog) tags.push(d.prog_context);
+    if(d.is_pr) tags.push("🏆 PR");
+
+    return `<div class="feed-card">
+      <div class="feed-hdr">
+        <div class="feed-avatar" style="background:${colour}">${initial}</div>
+        <span class="feed-user">${d.username||"unknown"}</span>
+        <span class="feed-time">${timeAgo(p.created_at)}</span>
+        ${isOwn?`<button class="del-set" style="margin-left:4px" onclick="deleteFeedPost('${p.id}')">×</button>`:""}
+      </div>
+      <div class="feed-ex">${d.exercise||"Lift"}</div>
+      <div class="feed-sets">${setsHtml||"<span style='font-size:11px;color:var(--mu)'>No sets selected</span>"}</div>
+      ${tags.length?`<div class="feed-tags">${tags.map(t=>`<span class="feed-tag">${t}</span>`).join("")}</div>`:""}
+      ${d.caption?`<div class="feed-note">"${d.caption}"</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+async function deleteFeedPost(id){
+  if(!confirm("Delete this post?")) return;
+  await feedDelete(id);
+  buildFeed();
+}
+
+function openShareLift(progId,wi,day){
+  const prog=(programs[currentId]||[]).find(p=>p.id===progId);
+  if(!prog) return;
+  const exList=prog.data?.days?.[day]?.exercises||[];
+
+  _shareLiftCtx={progId,wi:parseInt(wi),day,prog};
+
+  // Build set picker — one section per exercise
+  let html="";
+  exList.forEach((ex,exIdx)=>{
+    const storedSets=parseInt(get(`p${progId}-w${wi}-${day}-ex${exIdx}-sets`))||ex.sets||3;
+    // Only show exercises that have data logged
+    let hasSets=false;
+    for(let s=0;s<storedSets;s++){
+      if(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`)) hasSets=true;
+    }
+    if(!hasSets) return;
+
+    html+=`<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--ac);margin-bottom:4px">${ex.name}</div>`;
+    for(let s=0;s<storedSets;s++){
+      const wt=get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`);
+      const reps=get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-reps`);
+      const rpe=get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-rpe`);
+      const ev=e1rm(wt,reps);
+      if(!wt&&!reps) continue;
+      html+=`<div class="share-set-row">
+        <input type="checkbox" id="ss-${exIdx}-${s}" data-ex="${exIdx}" data-s="${s}"
+          data-wt="${wt}" data-reps="${reps}" data-rpe="${rpe||""}" data-e1rm="${ev?ev.toFixed(1):""}">
+        <label for="ss-${exIdx}-${s}" style="flex:1;cursor:pointer">
+          Set ${s+1}: <strong>${wt||"—"}kg × ${reps||"—"}</strong>
+          ${rpe?`<span style="color:var(--mu)"> @ RPE${rpe}</span>`:""}
+          ${ev?`<span style="color:var(--ac)"> → ${ev.toFixed(1)}kg e1RM</span>`:""}
+        </label>
+      </div>`;
+    }
+    html+="</div>";
+  });
+
+  if(!html){
+    alert("Log some sets first before posting to the feed.");
+    return;
+  }
+
+  document.getElementById("share-lift-sets").innerHTML=html||
+    "<p style='color:var(--mu);font-size:12px'>No sets logged yet in this session.</p>";
+  document.getElementById("share-lift-caption").value="";
+  document.getElementById("share-include-e1rm").checked=true;
+  document.getElementById("share-include-vol").checked=false;
+  document.getElementById("share-include-rpe").checked=false;
+  document.getElementById("share-include-prog").checked=false;
+
+  openModal("mo-share-lift");
+}
+
+async function submitShareLift(){
+  if(!_shareLiftCtx) return;
+  const {progId,wi,day,prog}=_shareLiftCtx;
+  const a=ca();
+
+  // Gather checked sets — group by exercise
+  const checked=[...document.querySelectorAll("#share-lift-sets input[type=checkbox]:checked")];
+  if(!checked.length){
+    alert("Select at least one set to post.");
+    return;
+  }
+
+  // Group by exercise (data-ex attribute)
+  const byEx={};
+  checked.forEach(cb=>{
+    const exIdx=cb.dataset.ex;
+    if(!byEx[exIdx]) byEx[exIdx]=[];
+    byEx[exIdx].push({wt:cb.dataset.wt,reps:cb.dataset.reps,rpe:cb.dataset.rpe,e1rm:cb.dataset.e1rm});
+  });
+
+  // For now post the first exercise group (most common use case)
+  // If multiple exercises selected, we post them all as one combined post
+  const exIdx=Object.keys(byEx)[0];
+  const exName=prog.data?.days?.[day]?.exercises?.[parseInt(exIdx)]?.name||"Lift";
+  const sets=byEx[exIdx];
+
+  // Find best set by e1rm
+  let bestSetIdx=0;
+  sets.forEach((s,i)=>{if(parseFloat(s.e1rm)>parseFloat(sets[bestSetIdx].e1rm||0)) bestSetIdx=i;});
+
+  // Options
+  const includeE1rm=document.getElementById("share-include-e1rm").checked;
+  const includeVol=document.getElementById("share-include-vol").checked;
+  const includeRpe=document.getElementById("share-include-rpe").checked;
+  const includeProg=document.getElementById("share-include-prog").checked;
+  const caption=document.getElementById("share-lift-caption").value.trim();
+
+  // Volume for this exercise
+  const storedSets=parseInt(get(`p${progId}-w${wi}-${day}-ex${exIdx}-sets`))||3;
+  let vol=0;
+  for(let s=0;s<storedSets;s++){
+    const w=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-wt`));
+    const r=parseFloat(get(`p${progId}-w${wi}-${day}-ex${exIdx}-s${s}-reps`));
+    if(w&&r) vol+=w*r;
+  }
+
+  const bestE1rm=sets[bestSetIdx].e1rm;
+  const allTimeBest=parseFloat(get("best-e1rm")||0);
+  const isPR=bestE1rm&&parseFloat(bestE1rm)>=allTimeBest-0.05&&allTimeBest>0;
+
+  const payload={
+    user_id:currentId,
+    data:{
+      username:a.name,
+      colour:a.colour||PRESETS[0],
+      exercise:exName,
+      sets,
+      best_set_idx:bestSetIdx,
+      e1rm:bestE1rm,
+      volume:vol>0?vol:null,
+      prog_context:includeProg?`${prog.name} · Week ${wi+1} · ${day}`:null,
+      include_e1rm:includeE1rm,
+      include_vol:includeVol,
+      include_rpe:includeRpe,
+      include_prog:includeProg,
+      caption:caption||null,
+      is_pr:isPR
+    }
+  };
+
+  const btn=document.getElementById("share-lift-submit");
+  btn.textContent="Posting…";btn.disabled=true;
+
+  try{
+    await feedPost(payload);
+    closeModal("mo-share-lift");
+    // Switch to feed tab
+    showMain("feed",null);
+    document.querySelectorAll(".mtab").forEach(t=>{
+      t.classList.toggle("active",t.textContent.trim()==="Recent Lifts");
+    });
+  }catch(err){
+    alert("Failed to post: "+err.message);
+  }finally{
+    btn.textContent="Post";btn.disabled=false;
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -3139,6 +3421,7 @@ async function bootApp(session){
   }
 
   applyAccent(accent());applyTheme();renderChips();buildProgNav();updateDash();updateStreak();
+  updatePublicStatsBtn();
   renderSwatches("new-swatches",newColour,c=>newColour=c);
   buildTemplateGrid();
   if(isOnline) flushQueue();
