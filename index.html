@@ -1060,20 +1060,23 @@ async function signUp(){
   }
 
   if(data.user){
+    // If no session yet (email confirmation required), store username claim for after confirmation
+    if(!data.session){
+      localStorage.setItem("pending_username_claim", JSON.stringify({
+        username, userId: data.user.id
+      }));
+      showConfirmEmail(email);
+      return;
+    }
+    // Session exists (email confirm off) — claim immediately
     try{
-      await claimUsername(username,data.user.id);
+      await claimUsername(username, data.user.id);
     }catch(e){
       loginErr(e.message);
       return;
     }
   }
-
-  // If session is null, email confirmation is required
-  if(data.user&&!data.session){
-    showConfirmEmail(email);
-  } else {
-    loginErr("Account created — signing you in…");
-  }
+  loginErr("Account created — signing you in…");
 }
 
 // ── Google sign in ──────────────────────────────────────
@@ -4587,6 +4590,23 @@ async function bootApp(session){
   _cachedMeta=meta; // cache for PIN fallback
   const isGoogle=user.app_metadata?.provider==="google"||
     (user.identities||[]).some(i=>i.provider==="google");
+
+  // Claim pending username if stored (email-confirmed signups)
+  const pendingClaim=localStorage.getItem("pending_username_claim");
+  if(pendingClaim){
+    try{
+      const {username,userId}=JSON.parse(pendingClaim);
+      if(userId===user.id){
+        await claimUsername(username,user.id).catch(()=>{});
+        // Update metadata with the username if not already set
+        if(!meta.display_name){
+          await _sb.auth.updateUser({data:{display_name:username}}).catch(()=>{});
+          meta.display_name=username;
+        }
+      }
+    }catch{}
+    localStorage.removeItem("pending_username_claim");
+  }
 
   // Check if returning from Google re-auth for account deletion
   if(localStorage.getItem("pending_account_delete")==="1"){
