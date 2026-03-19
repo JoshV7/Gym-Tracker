@@ -543,6 +543,21 @@ select{cursor:pointer;}
   </div>
 </div>
 
+<!-- DELETE ACCOUNT MODAL -->
+<div class="mo" id="mo-delete-account">
+  <div class="md">
+    <h2 style="color:var(--red)">Delete Account</h2>
+    <p style="font-size:12px;color:var(--mu);margin-bottom:14px">
+      This permanently deletes your account, all training data, programs, and posts. <strong style="color:var(--red)">This cannot be undone.</strong>
+    </p>
+    <div id="del-account-content"></div>
+    <div class="md-btns" style="margin-top:14px">
+      <button class="mb sec" onclick="closeModal('mo-delete-account')">Cancel</button>
+      <button class="mb danger" onclick="confirmDeleteAccount()">Delete Everything</button>
+    </div>
+  </div>
+</div>
+
 <!-- FIND USERS MODAL -->
 <div class="mo" id="mo-find-users">
   <div class="md">
@@ -1840,8 +1855,8 @@ function renderSubContent(ctx){
 function updateDash(){
   const a=ca();if(!a) return;
   const tpr=parseFloat(get("target-pr"))||Math.round(a.pr*1.2);
-  const bestE=parseFloat(get("best-e1rm")||0);
-  const bestEx=get("best-e1rm-ex")||"";
+  const tSquat=parseFloat(get("target-squat"))||Math.round((a.pr_squat||0)*1.2)||0;
+  const tDL=parseFloat(get("target-dl"))||Math.round((a.pr_dl||0)*1.2)||0;
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived);
   const privacy=!isPublicStats();
@@ -1857,41 +1872,64 @@ function updateDash(){
     }
   }
 
-  const progPct=totalWks>0?Math.round((sessions/(totalWks*6))*100):0;
-  const curPR=parseFloat(get("pr-bench-0"))||a.pr;
-  const bPct=Math.min(100,Math.max(0,tpr>a.pr?Math.round(((curPR-a.pr)/(tpr-a.pr))*100):0));
+  // Get highest PR from tracker for each lift
+  function highestPR(lift){
+    let best=0;
+    for(let i=0;i<20;i++){
+      const v=parseFloat(get(`pr-${lift}-${i}`));
+      if(v&&v>best) best=v;
+    }
+    return best||null;
+  }
+  const curBench=highestPR("bench")||a.pr||0;
+  const curSquat=highestPR("squat")||a.pr_squat||0;
+  const curDL=highestPR("deadlift")||a.pr_dl||0;
+
+  const bPct=Math.min(100,Math.max(0,tpr>a.pr&&a.pr?Math.round(((curBench-a.pr)/(tpr-a.pr))*100):0));
+  const sPct=Math.min(100,Math.max(0,tSquat>0&&a.pr_squat?Math.round(((curSquat-a.pr_squat)/(tSquat-a.pr_squat))*100):0));
+  const dPct=Math.min(100,Math.max(0,tDL>0&&a.pr_dl?Math.round(((curDL-a.pr_dl)/(tDL-a.pr_dl))*100):0));
   const pinSet=hasPin(currentId);
 
-  // Sensitive stat cards — hidden entirely in privacy mode
-  const sensitiveCards=privacy?"":`
-    <div class="sc"><div class="l">Bench PR</div><div class="v">${a.pr}kg</div><div class="s">Starting</div></div>
-    ${a.pr_squat?`<div class="sc"><div class="l">Squat PR</div><div class="v">${a.pr_squat}kg</div><div class="s">Starting</div></div>`:""}
-    ${a.pr_dl?`<div class="sc"><div class="l">Deadlift PR</div><div class="v">${a.pr_dl}kg</div><div class="s">Starting</div></div>`:""}
-    <div class="sc"><div class="l">Target PR</div><div class="v">${tpr}kg</div><div class="s">Editable above</div></div>`;
-
-  // e1RM card — value masked in privacy, label always shown
-  const e1rmCard=`<div class="sc">
-    <div class="l">Best e1RM${bestEx?` · ${bestEx}`:""}</div>
-    <div class="v">${privacy?"●●●":bestE>0?bestE.toFixed(0)+"kg":"—"}</div>
-    <div class="s">All time</div>
+  // Three PR boxes — target (editable), current PR from tracker, start PR from signup
+  const prBoxes=privacy?"":`
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:12px 0">
+    ${[
+      {lift:"bench", label:"BENCH", startPR:a.pr, curPR:curBench, target:tpr, tKey:"target-pr"},
+      ...(a.pr_squat?[{lift:"squat", label:"SQUAT", startPR:a.pr_squat, curPR:curSquat, target:tSquat, tKey:"target-squat"}]:[]),
+      ...(a.pr_dl?[{lift:"deadlift", label:"DEADLIFT", startPR:a.pr_dl, curPR:curDL, target:tDL, tKey:"target-dl"}]:[])
+    ].map(({lift,label,startPR,curPR,target,tKey})=>`
+      <div style="background:var(--sf);border-radius:5px;padding:12px;border-top:3px solid var(--ac)">
+        <div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">${label}</div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px">
+          <input type="number" step="0.5" value="${target||""}" placeholder="Target"
+            style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--ac);
+            background:transparent;border:none;border-bottom:1px dashed var(--bd);
+            width:80px;padding:0;text-align:left"
+            onchange="set('${tKey}',this.value);updateDash()">
+          <span style="font-size:11px;color:var(--mu)">kg target</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:2px">
+          ${curPR?curPR+"kg current":"—"}
+        </div>
+        <div style="font-size:10px;color:var(--mu)">
+          ${startPR?startPR+"kg at signup":"—"}
+        </div>
+        ${target&&startPR?`
+        <div class="pb" style="margin-top:6px">
+          <div class="pb-fill" style="width:${Math.min(100,Math.max(0,target>startPR?Math.round(((curPR-startPR)/(target-startPR))*100):0))}%"></div>
+        </div>`:""}
+      </div>`).join("")}
   </div>`;
 
   document.getElementById("page-dash").innerHTML=`
   <div class="hero">
     <h1>GYM<br><span>${a.name.toUpperCase()}</span></h1>
     <p class="hero-sub">${primary?`Active: ${primary.name}`:"No primary program set — create one in Programs"}</p>
-    ${privacy?"":
-    `<div class="te-wrap">
-      <label>Bench Target</label>
-      <input type="number" step="0.5" value="${tpr}"
-        onchange="set('target-pr',this.value);updateDash()">
-      <span style="font-size:11px;color:var(--mu)">kg</span>
-    </div>`}
   </div>
 
-  <div class="stats">
-    ${sensitiveCards}
-    ${e1rmCard}
+  ${prBoxes}
+
+  <div class="stats" style="margin-bottom:10px">
     ${primary?`<div class="sc"><div class="l">Sessions</div><div class="v">${sessions}/${totalWks*6}</div><div class="s">${primary.name}</div></div>`:""}
   </div>
 
@@ -1900,11 +1938,6 @@ function updateDash(){
     <div class="pb-label"><span>PROGRAM: ${primary.name.toUpperCase()}</span><span>${progPct}%</span></div>
     <div class="pb"><div class="pb-fill" style="width:${progPct}%"></div></div>
   </div>`:""}
-  ${privacy?"":
-  `<div class="pb-wrap">
-    <div class="pb-label"><span>BENCH JOURNEY (${a.pr}→${tpr}kg)</span><span>${bPct}%</span></div>
-    <div class="pb"><div class="pb-fill" style="width:${bPct}%"></div></div>
-  </div>`}
 
   <div class="sec">Rules</div>
   <div class="note-grid">
@@ -1931,8 +1964,10 @@ function updateDash(){
     </p>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="changeUsername()">Change Username</button>
-    <button class="save-btn" style="margin-top:0;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+    <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="openLinkAccounts()">🔗 Linked Accounts</button>
+    <button class="save-btn" style="margin-top:8px;background:var(--red)"
+      onclick="openDeleteAccount()">Delete Account</button>
   </div>
 
   <div style="background:var(--sf);border-radius:5px;padding:12px;margin-top:9px">
@@ -3398,7 +3433,7 @@ async function submitShareLift(){
 // ══════════════════════════════════════════════════════
 async function syncProfile(user){
   const meta=user.user_metadata||{};
-  if(!meta.display_name) return; // not complete yet
+  if(!meta.display_name) return;
   const payload={
     user_id:user.id,
     username:meta.display_name,
@@ -3409,7 +3444,8 @@ async function syncProfile(user){
     public_stats:true,
     updated_at:new Date().toISOString()
   };
-  await _sb.from("profiles").upsert(payload,{onConflict:"user_id"}).catch(()=>{});
+  const {error}=await _sb.from("profiles").upsert(payload,{onConflict:"user_id"});
+  if(error) console.warn("syncProfile error:",error.message);
 }
 
 // ══════════════════════════════════════════════════════
@@ -3536,13 +3572,14 @@ async function buildFriends(){
   <div class="sec" style="margin-top:16px">Pending Requests</div>
   <div id="pending-list"><p style="color:var(--mu);font-size:12px">Loading…</p></div>`;
 
-  // Fetch friendships
-  const {data:friendships}=await _sb.from("friendships").select("*")
-    .or(`requester_id.eq.${currentId},addressee_id.eq.${currentId}`);
+  // Fetch friendships — two separate queries to avoid PostgREST or() issues
+  const {data:sent}=await _sb.from("friendships").select("*").eq("requester_id",currentId);
+  const {data:recv}=await _sb.from("friendships").select("*").eq("addressee_id",currentId);
+  const friendships=[...(sent||[]),...(recv||[])];
 
-  const accepted=(friendships||[]).filter(f=>f.status==="accepted");
-  const pendingIn=(friendships||[]).filter(f=>f.status==="pending"&&f.addressee_id===currentId);
-  const pendingOut=(friendships||[]).filter(f=>f.status==="pending"&&f.requester_id===currentId);
+  const accepted=friendships.filter(f=>f.status==="accepted");
+  const pendingIn=friendships.filter(f=>f.status==="pending"&&f.addressee_id===currentId);
+  const pendingOut=friendships.filter(f=>f.status==="pending"&&f.requester_id===currentId);
 
   // Get friend profile data
   const friendIds=accepted.map(f=>f.requester_id===currentId?f.addressee_id:f.requester_id);
@@ -3605,12 +3642,12 @@ async function searchUsers(q){
     .ilike("username",`%${q}%`).neq("user_id",currentId).limit(10);
   if(!data||!data.length){results.innerHTML=`<p style="color:var(--mu);font-size:12px;padding:8px">No users found.</p>`;return;}
 
-  // Check existing friendships
-  const ids=data.map(p=>p.user_id);
-  const {data:fs}=await _sb.from("friendships").select("*")
-    .or(`requester_id.eq.${currentId},addressee_id.eq.${currentId}`);
+  // Check existing friendships — two queries to avoid PostgREST syntax issues
+  const {data:fsSent}=await _sb.from("friendships").select("*").eq("requester_id",currentId);
+  const {data:fsRecv}=await _sb.from("friendships").select("*").eq("addressee_id",currentId);
+  const fsAll=[...(fsSent||[]),...(fsRecv||[])];
   const fsMap={};
-  (fs||[]).forEach(f=>{
+  fsAll.forEach(f=>{
     const other=f.requester_id===currentId?f.addressee_id:f.requester_id;
     fsMap[other]=f.status+(f.requester_id===currentId?"_sent":"_recv");
   });
@@ -3652,19 +3689,47 @@ async function respondFriend(requesterId,status){
 async function removeFriend(userId,username){
   if(!confirm(`Remove ${username} from friends?`)) return;
   await _sb.from("friendships").delete()
-    .or(`and(requester_id.eq.${currentId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentId})`);
-  buildFriends();
+    .eq("requester_id",currentId).eq("addressee_id",userId);
+  await _sb.from("friendships").delete()
+    .eq("requester_id",userId).eq("addressee_id",currentId);
+  if(currentMain==="friends") buildFriends();
 }
 
 async function viewProfile(userId){
-  // Fetch profile
-  const {data:profile}=await _sb.from("profiles").select("*").eq("user_id",userId).single();
-  if(!profile){alert("Profile not found.");return;}
+  // Try profiles table first
+  let profile=null;
+  const {data,error}=await _sb.from("profiles").select("*").eq("user_id",userId).maybeSingle();
+  if(data){
+    profile=data;
+  } else {
+    // Fall back — if viewing own profile, build from metadata
+    if(userId===currentId){
+      const a=ca();
+      profile={
+        user_id:userId,
+        username:a.name,
+        colour:a.colour||PRESETS[0],
+        pr_bench:a.pr||null,
+        pr_squat:a.pr_squat||null,
+        pr_dl:a.pr_dl||null,
+        public_stats:isPublicStats(),
+        created_at:new Date().toISOString()
+      };
+      // Trigger a sync so future lookups work
+      const {data:{user}}=await _sb.auth.getUser();
+      syncProfile(user).catch(()=>{});
+    } else {
+      alert("Profile not found — this user may not have completed their profile yet.");
+      return;
+    }
+  }
 
-  // Check friendship status
-  const {data:fs}=await _sb.from("friendships").select("*")
-    .or(`and(requester_id.eq.${currentId},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${currentId})`)
-    .maybeSingle();
+  // Check friendship status — two queries for reliability
+  const {data:fsSent}=await _sb.from("friendships").select("*")
+    .eq("requester_id",currentId).eq("addressee_id",userId).maybeSingle();
+  const {data:fsRecv}=await _sb.from("friendships").select("*")
+    .eq("requester_id",userId).eq("addressee_id",currentId).maybeSingle();
+  const fs=fsSent||fsRecv||null;
 
   _viewingProfile={user_id:userId,username:profile.username,friendship:fs};
 
@@ -3737,6 +3802,116 @@ async function toggleFriend(){
 }
 
 // ══════════════════════════════════════════════════════
+//  DELETE ACCOUNT
+// ══════════════════════════════════════════════════════
+async function openDeleteAccount(){
+  const {data:{user}}=await _sb.auth.getUser();
+  const identities=user.identities||[];
+  const hasEmail=identities.some(i=>i.provider==="email");
+  const hasGoogle=!hasEmail||identities.some(i=>i.provider==="google");
+  const pinSet=hasPin(currentId);
+
+  let html="";
+
+  if(hasEmail){
+    html+=`<div class="login-field">
+      <label>Confirm Password</label>
+      <input type="password" id="del-account-password" placeholder="••••••••">
+    </div>`;
+  } else {
+    html+=`<p style="font-size:11px;color:var(--mu);margin-bottom:10px">
+      You signed in with Google. Click <strong>Delete Everything</strong> and you'll be asked to re-authenticate with Google to confirm.
+    </p>`;
+  }
+
+  if(pinSet){
+    html+=`<div class="login-field">
+      <label>Your PIN</label>
+      <input type="password" id="del-account-pin" inputmode="numeric" maxlength="4"
+        placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+    </div>`;
+  }
+
+  html+=`<div style="font-size:11px;color:var(--mu);margin-top:8px">
+    Type <strong style="color:var(--red)">DELETE</strong> to confirm:
+    <input type="text" id="del-account-confirm" placeholder="DELETE"
+      style="margin-top:4px;display:block;width:100%">
+  </div>`;
+
+  document.getElementById("del-account-content").innerHTML=html;
+  openModal("mo-delete-account");
+}
+
+async function confirmDeleteAccount(){
+  const confirmText=document.getElementById("del-account-confirm")?.value;
+  if(confirmText!=="DELETE"){alert('Type DELETE to confirm.');return;}
+
+  const {data:{user}}=await _sb.auth.getUser();
+  const identities=user.identities||[];
+  const hasEmail=identities.some(i=>i.provider==="email");
+  const pinSet=hasPin(currentId);
+
+  // Check PIN if set
+  if(pinSet){
+    const pin=document.getElementById("del-account-pin")?.value;
+    if(pin!==db[currentId]?.["__pin__"]){alert("Incorrect PIN.");return;}
+  }
+
+  // Verify password if email account
+  if(hasEmail){
+    const password=document.getElementById("del-account-password")?.value;
+    if(!password){alert("Enter your password.");return;}
+    // Re-authenticate by signing in
+    const {error}=await _sb.auth.signInWithPassword({email:user.email,password});
+    if(error){alert("Incorrect password.");return;}
+  } else {
+    // Google — re-auth via OAuth (redirects away and back)
+    // Store a flag so we know to delete on return
+    localStorage.setItem("pending_account_delete","1");
+    await _sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:window.location.href}});
+    return;
+  }
+
+  await doDeleteAccount();
+}
+
+async function doDeleteAccount(){
+  localStorage.removeItem("pending_account_delete");
+  const uid=currentId;
+
+  // Delete all user data from tables
+  await Promise.all([
+    _sb.from("workouts").delete().eq("athlete",uid),
+    _sb.from("bodyweight").delete().eq("athlete",uid),
+    _sb.from("programs").delete().eq("athlete",uid),
+    _sb.from("pr_history").delete().eq("athlete",uid),
+    _sb.from("shared_lifts").delete().eq("user_id",uid),
+    _sb.from("usernames").delete().eq("user_id",uid),
+    _sb.from("profiles").delete().eq("user_id",uid),
+    _sb.from("friendships").delete().eq("requester_id",uid),
+    _sb.from("friendships").delete().eq("addressee_id",uid),
+  ]);
+
+  // Call Edge Function to delete the auth account itself
+  const {data:{session}}=await _sb.auth.getSession();
+  try{
+    await fetch(`${SB_URL}/functions/v1/delete-user`,{
+      method:"POST",
+      headers:{
+        "Authorization":"Bearer "+session?.access_token,
+        "Content-Type":"application/json"
+      }
+    });
+  }catch(e){
+    console.warn("Edge function error:",e);
+  }
+
+  await _sb.auth.signOut();
+  alert("Account fully deleted.");
+  location.reload();
+}
+
+// ══════════════════════════════════════════════════════
 //  INIT — driven by Supabase auth session
 // ══════════════════════════════════════════════════════
 async function bootApp(session){
@@ -3746,6 +3921,16 @@ async function bootApp(session){
   const meta=user.user_metadata||{};
   const isGoogle=user.app_metadata?.provider==="google"||
     (user.identities||[]).some(i=>i.provider==="google");
+
+  // Check if returning from Google re-auth for account deletion
+  if(localStorage.getItem("pending_account_delete")==="1"){
+    if(confirm("Re-authenticated. Proceed with permanent account deletion?")){
+      await doDeleteAccount();
+      return;
+    } else {
+      localStorage.removeItem("pending_account_delete");
+    }
+  }
 
   // Google users who haven't set a username yet — show profile form
   if(isGoogle&&!meta.profile_complete){
