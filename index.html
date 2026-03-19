@@ -377,36 +377,7 @@ select{cursor:pointer;}
         <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
         Continue with Google
       </button>
-      <button class="login-btn sec" onclick="showPhone()" style="margin-top:0">📱 Sign in with Phone</button>
       <p class="login-reset" onclick="showReset()">Forgot password?</p>
-    </div>
-
-    <!-- PHONE SIGN IN -->
-    <div id="phone-form" style="display:none">
-      <div id="phone-step1">
-        <div class="login-field">
-          <label>Phone Number</label>
-          <input type="tel" id="phone-number" placeholder="+447700900000"
-            style="letter-spacing:1px">
-          <div style="font-size:10px;color:var(--mu);margin-top:3px">Include country code e.g. +44 for UK</div>
-        </div>
-        <button class="login-btn pri" onclick="sendOTP()">Send Code</button>
-        <button class="login-btn sec" onclick="showLogin()">Back</button>
-      </div>
-      <div id="phone-step2" style="display:none">
-        <p style="font-size:12px;color:var(--mu);margin-bottom:12px">
-          Enter the 6-digit code sent to <span id="phone-sent-to" style="color:var(--tx)"></span>
-        </p>
-        <div class="login-field">
-          <label>Verification Code</label>
-          <input type="text" id="phone-otp" inputmode="numeric" maxlength="6"
-            placeholder="123456" style="letter-spacing:6px;font-size:18px;text-align:center"
-            onkeydown="if(event.key==='Enter') verifyOTP()">
-        </div>
-        <button class="login-btn pri" onclick="verifyOTP()">Verify</button>
-        <button class="login-btn sec" onclick="showPhone()">Resend Code</button>
-        <button class="login-btn sec" onclick="showLogin()">Back</button>
-      </div>
     </div>
 
     <div id="signup-form" style="display:none">
@@ -451,10 +422,16 @@ select{cursor:pointer;}
       <div class="login-field">
         <label>4-Digit PIN</label>
         <div style="display:flex;gap:6px;margin-top:3px">
-          <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
-            placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
-          <input type="password" id="signup-pin2" inputmode="numeric" maxlength="4"
-            placeholder="confirm" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <input type="password" id="signup-pin" inputmode="numeric" maxlength="4"
+              placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+            <span style="font-size:9px;color:var(--mu);letter-spacing:1px">PIN</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <input type="password" id="signup-pin2" inputmode="numeric" maxlength="4"
+              placeholder="••••" style="width:80px;letter-spacing:4px;font-size:16px;text-align:center">
+            <span style="font-size:9px;color:var(--mu);letter-spacing:1px">CONFIRM</span>
+          </div>
         </div>
       </div>
       <button class="login-btn pri" onclick="signUp()">Create Account</button>
@@ -767,25 +744,25 @@ const _sb = window.supabase.createClient(SB_URL, SB_KEY);
 function loginErr(msg){document.getElementById("login-err").textContent=msg||"";}
 
 function showLogin(){
-  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="login-form"?"":"none";
   });
   loginErr();
 }
 function showSignUp(){
-  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="signup-form"?"":"none";
   });
   loginErr();
 }
 function showReset(){
-  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="reset-form"?"":"none";
   });
   loginErr();
 }
 function showProfileForm(){
-  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="profile-form"?"":"none";
   });
   loginErr();
@@ -3441,40 +3418,6 @@ async function submitShareLift(){
 }
 
 // ══════════════════════════════════════════════════════
-//  PHONE AUTH
-// ══════════════════════════════════════════════════════
-function showPhone(){
-  ["login-form","signup-form","reset-form","profile-form","phone-form"].forEach(id=>{
-    document.getElementById(id).style.display=id==="phone-form"?"":"none";
-  });
-  document.getElementById("phone-step1").style.display="";
-  document.getElementById("phone-step2").style.display="none";
-  loginErr();
-}
-
-async function sendOTP(){
-  loginErr();
-  const phone=document.getElementById("phone-number").value.trim();
-  if(!phone||!phone.startsWith("+")){loginErr("Enter phone number with country code e.g. +447700900000");return;}
-  const {error}=await _sb.auth.signInWithOtp({phone});
-  if(error){loginErr(error.message);return;}
-  document.getElementById("phone-sent-to").textContent=phone;
-  document.getElementById("phone-step1").style.display="none";
-  document.getElementById("phone-step2").style.display="";
-  loginErr("Code sent!");
-}
-
-async function verifyOTP(){
-  loginErr();
-  const phone=document.getElementById("phone-number").value.trim();
-  const token=document.getElementById("phone-otp").value.trim();
-  if(!token||token.length!==6){loginErr("Enter the 6-digit code.");return;}
-  const {error}=await _sb.auth.verifyOtp({phone,token,type:"sms"});
-  if(error) loginErr(error.message);
-  // onAuthStateChange handles the rest
-}
-
-// ══════════════════════════════════════════════════════
 //  PROFILE SYNC — keeps profiles table in sync with metadata
 // ══════════════════════════════════════════════════════
 async function syncProfile(user){
@@ -3501,7 +3444,6 @@ async function openLinkAccounts(){
   const identities=user.identities||[];
   const hasEmail=identities.some(i=>i.provider==="email");
   const hasGoogle=identities.some(i=>i.provider==="google");
-  const hasPhone=identities.some(i=>i.provider==="phone");
 
   let html="";
 
@@ -3518,7 +3460,7 @@ async function openLinkAccounts(){
   </div>`;
 
   // Google
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)">
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
     <div>
       <div style="font-size:13px;font-weight:600">🔵 Google</div>
       <div style="font-size:11px;color:var(--mu)">${hasGoogle?"Linked":"Not linked"}</div>
@@ -3527,18 +3469,6 @@ async function openLinkAccounts(){
       ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
       :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
           onclick="linkGoogle()">Link</button>`}
-  </div>`;
-
-  // Phone
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
-    <div>
-      <div style="font-size:13px;font-weight:600">📱 Phone</div>
-      <div style="font-size:11px;color:var(--mu)">${hasPhone?(user.phone||"linked"):"Not linked"}</div>
-    </div>
-    ${hasPhone
-      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
-      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
-          onclick="linkPhone()">Link</button>`}
   </div>`;
 
   // Data priority section — only if multiple identities
@@ -3577,19 +3507,6 @@ async function linkGoogle(){
   closeModal("mo-link");
   const {error}=await _sb.auth.linkIdentity({provider:"google",options:{redirectTo:window.location.href}});
   if(error) alert(error.message);
-}
-
-async function linkPhone(){
-  closeModal("mo-link");
-  const phone=prompt("Phone number to link (with country code e.g. +447700900000):");
-  if(!phone) return;
-  const {error}=await _sb.auth.linkIdentity({provider:"phone",phone});
-  if(error){alert(error.message);return;}
-  const code=prompt("Enter the verification code sent to "+phone+":");
-  if(!code) return;
-  const {error:e2}=await _sb.auth.verifyOtp({phone,token:code,type:"phone_change"});
-  if(e2) alert(e2.message);
-  else{alert("Phone linked!");openLinkAccounts();}
 }
 
 async function applyDataPriority(){
