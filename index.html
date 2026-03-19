@@ -264,11 +264,7 @@ select{cursor:pointer;}
   100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
 
 /* EYE TOGGLE */
-.eye-btn{background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--mu);
-  padding:3px;transition:.2s;position:relative;display:inline-flex;align-items:center;justify-content:center;}
-.eye-btn:hover{color:var(--tx);}
-.eye-btn.hidden-stat::after{content:"";position:absolute;width:2px;height:18px;
-  background:var(--red);transform:rotate(45deg);border-radius:1px;opacity:.9;pointer-events:none;}
+.eye-btn{background:transparent;border:none;cursor:pointer;font-size:16px;padding:3px;transition:.2s;}
 
 /* TARGET EDIT */
 .te-wrap{display:flex;align-items:center;gap:6px;margin-top:5px;}
@@ -2386,28 +2382,27 @@ function buildSetRow(progId,wi,day,exIdx,s,ex,prevWi,allBest){
   const ev=e1rm(wVal,rVal);
   const isBest=ev&&allBest&&ev>=allBest-0.05;
 
-  // Auto-fill suggested weight for liftPicker programs (e.g. Smolov Jr.)
-  // Only show as placeholder if no weight logged yet
+  // Auto-fill suggested weight for main lift only in liftPicker programs (e.g. Smolov Jr.)
   let suggestedWt="";
   if(!wVal){
     const prog=(programs[currentId]||[]).find(p=>p.id===progId);
     const tmpl=prog?.template?PROG_TEMPLATES[prog.template]:null;
-    if(tmpl?.liftPicker&&tmpl.weeklyPct&&prog.data?.rm1){
-      const dayIdx=tmpl.liftDays?.indexOf(day)??-1;
-      if(dayIdx>=0&&wi<tmpl.weeklyPct.length){
-        const pct=tmpl.weeklyPct[wi][dayIdx];
-        // Round to nearest 0.5kg
-        const raw=prog.data.rm1*pct;
-        suggestedWt=(Math.round(raw*2)/2).toFixed(1);
+    if(tmpl?.liftPicker&&tmpl.weeklyPct&&prog.data?.rm1&&tmpl.liftDays?.includes(day)){
+      // Only apply to exIdx 0 (the main lift is always first exercise in Smolov days)
+      if(exIdx===0){
+        const dayIdx=tmpl.liftDays.indexOf(day);
+        if(dayIdx>=0&&wi<tmpl.weeklyPct.length){
+          suggestedWt=(Math.round(prog.data.rm1*tmpl.weeklyPct[wi][dayIdx]*2)/2).toFixed(1);
+        }
       }
     }
   }
 
   const prevW=_prevWi!==null?get(`p${progId}-w${_prevWi}-${day}-ex${exIdx}-s${s}-wt`):"";
   const prevR=_prevWi!==null?get(`p${progId}-w${_prevWi}-${day}-ex${exIdx}-s${s}-reps`):"";
+  // Suggestion shows as placeholder only — no ghost text below the input
   const wtPlaceholder=prevW||suggestedWt||"kg";
-  const wtGhost=prevW?`<div class="ghost-val">${prevW}kg</div>`:
-    suggestedWt?`<div class="ghost-val" style="color:var(--ac);opacity:.5">${suggestedWt}kg</div>`:"";
+  const wtGhost=prevW?`<div class="ghost-val">${prevW}kg</div>`:"";
 
   return `<tr id="setrow-${progId}-w${wi}-${day}-ex${exIdx}-s${s}"${isBest?" class='best-set'":""}>
     <td class="set-num">${s+1}</td>
@@ -3458,10 +3453,11 @@ function updatePublicStatsBtn(){
   if(!btn) return;
   const on=isPublicStats();
   btn.textContent="👁";
-  btn.classList.toggle("hidden-stat",!on);
-  btn.style.opacity="";
-  btn.style.textDecoration="";
-  btn.title=on?"Your PRs are visible to others — click to hide":"Your PRs are hidden from others — click to show";
+  btn.style.background=on?"rgba(0,255,157,.15)":"rgba(255,77,0,.15)";
+  btn.style.border=on?"1px solid rgba(0,255,157,.3)":"1px solid rgba(255,77,0,.3)";
+  btn.style.borderRadius="14px";
+  btn.style.color=on?"var(--gn)":"var(--red)";
+  btn.title=on?"PRs visible to others — click to hide":"PRs hidden from others — click to show";
 }
 
 // ══════════════════════════════════════════════════════
