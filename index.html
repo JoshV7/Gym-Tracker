@@ -1373,10 +1373,16 @@ async function bwSave(id,date,weight){
   const payload={athlete:id,date,weight_kg:parseFloat(weight)};
   if(!isOnline){queueOp("bodyweight","POST",payload);return;}
   try{
-    // POST with upsert — on_conflict matches the unique(athlete,date) constraint
+    const {data:{session}}=await _sb.auth.getSession();
+    const token=session?.access_token||SB_KEY;
     const r=await fetch(`${SB_URL}/rest/v1/bodyweight?on_conflict=athlete,date`,{
       method:"POST",
-      headers:{...HDR,"Prefer":"resolution=merge-duplicates,return=minimal"},
+      headers:{
+        "apikey":SB_KEY,
+        "Authorization":"Bearer "+token,
+        "Content-Type":"application/json",
+        "Prefer":"resolution=merge-duplicates,return=minimal"
+      },
       body:JSON.stringify(payload)
     });
     if(!r.ok){
@@ -1628,10 +1634,10 @@ function updateStreak(){
 // ══════════════════════════════════════════════════════
 //  VOLUME CALC
 // ══════════════════════════════════════════════════════
-function calcSetVol(progId,weekIdx,day,exIdx){
+function calcSetVol(progId,weekIdx,day,exIdx,defaultSets){
   let total=0;
   const setsKey=`p${progId}-w${weekIdx}-${day}-ex${exIdx}-sets`;
-  const sets=parseInt(get(setsKey))||0;
+  const sets=parseInt(get(setsKey))||defaultSets||3;
   for(let s=0;s<sets;s++){
     const w=parseFloat(get(`p${progId}-w${weekIdx}-${day}-ex${exIdx}-s${s}-wt`));
     const r=parseFloat(get(`p${progId}-w${weekIdx}-${day}-ex${exIdx}-s${s}-reps`));
@@ -1642,7 +1648,7 @@ function calcSetVol(progId,weekIdx,day,exIdx){
 
 function calcDayVol(progId,weekIdx,day,exList){
   let t=0;
-  exList.forEach((_,i)=>t+=calcSetVol(progId,weekIdx,day,i));
+  exList.forEach((ex,i)=>t+=calcSetVol(progId,weekIdx,day,i,ex.sets));
   return t;
 }
 
@@ -1825,7 +1831,7 @@ function updateDash(){
   const tDL=parseFloat(get("target-dl"))||Math.round((a.pr_dl||0)*1.2)||0;
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived);
-  const privacy=!isPublicStats();
+  const privacy=false; // own dashboard always shows your PRs — eye controls others view
 
   // Sessions count from primary program
   let sessions=0,totalWks=0;
@@ -2603,36 +2609,32 @@ async function delBW(date){
 // ══════════════════════════════════════════════════════
 //  ANALYTICS
 // ══════════════════════════════════════════════════════
+let _analyticsE1rmEx="Bench Press (Barbell)"; // selected exercise for e1RM chart
+
 function buildAnalytics(){
   const a=ca();
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived)||progs[0];
 
-  // Gather volume and e1rm per session
-  const volLabels=[],volData=[],e1rmLabels=[],e1rmData=[];
+  // Collect all exercises used in primary program for the dropdown
+  const usedExercises=new Set();
+  const volLabels=[],volData=[];
   const muscleVol={};
 
   if(primary){
     for(let wi=0;wi<primary.weeks;wi++){
       WEEK_DAYS.forEach(day=>{
         const d=primary.data?.days?.[day];if(!d||!d.exercises?.length) return;
+        // Volume — pass exercises so calcDayVol gets default sets
         const v=calcDayVol(primary.id,wi,day,d.exercises);
         if(v>0){volLabels.push(`W${wi+1} ${day.slice(0,3)}`);volData.push(v);}
-
         d.exercises.forEach((ex,ei)=>{
+          if(ex.name) usedExercises.add(ex.name);
           const sets=parseInt(get(`p${primary.id}-w${wi}-${day}-ex${ei}-sets`))||ex.sets||3;
-          let exBest=0;
           for(let s=0;s<sets;s++){
             const w=parseFloat(get(`p${primary.id}-w${wi}-${day}-ex${ei}-s${s}-wt`));
             const r=parseFloat(get(`p${primary.id}-w${wi}-${day}-ex${ei}-s${s}-reps`));
-            const v2=e1rm(w,r);if(v2&&v2>exBest){exBest=v2;}
-            if(w&&r){
-              const m=MUSCLE_MAP[ex.name];
-              if(m) muscleVol[m]=(muscleVol[m]||0)+w*r;
-            }
-          }
-          if(exBest>0&&ex.name==="Bench Press (Barbell)"){
-            e1rmLabels.push(`W${wi+1} ${day.slice(0,3)}`);e1rmData.push(parseFloat(exBest.toFixed(1)));
+            if(w&&r){const m=MUSCLE_MAP[ex.name];if(m) muscleVol[m]=(muscleVol[m]||0)+w*r;}
           }
         });
       });
@@ -2645,13 +2647,17 @@ function buildAnalytics(){
     shoulders:"#b47cff","rear delt":"#b47cff",quads:"#00ff9d",hamstrings:"#00ff9d",
     glutes:"#ff4d8b",calves:"#00ff9d",core:"#ff9d00"}[m]||"#666"));
 
-  // Session comparison
   let cmpText="";
   if(volData.length>=2){
     const last=volData[volData.length-1],prev=volData[volData.length-2];
     const diff=Math.round(((last-prev)/prev)*100);
     cmpText=`Last session: ${diff>=0?"+":""}${diff}% vs previous (${last.toLocaleString()}kg vs ${prev.toLocaleString()}kg)`;
   }
+
+  // Build e1RM data for selected exercise
+  const exOptions=[...usedExercises].sort();
+  // Ensure selected exercise is valid
+  if(!exOptions.includes(_analyticsE1rmEx)&&exOptions.length) _analyticsE1rmEx=exOptions[0];
 
   document.getElementById("page-analytics").innerHTML=`
   <div class="hero" style="padding-top:12px">
@@ -2662,39 +2668,151 @@ function buildAnalytics(){
     border-radius:4px;padding:9px 13px;font-size:12px;color:var(--ac);margin-bottom:10px">
     📊 ${cmpText}</div>`:""}
   <div class="sec">Volume Per Session</div>
-  <div class="chart-wrap"><canvas id="ch-vol"></canvas></div>
-  <div class="sec">Bench e1RM Over Time</div>
+  ${volData.length?`<div class="chart-wrap"><canvas id="ch-vol"></canvas></div>`
+    :`<p style="color:var(--mu);font-size:12px;padding:8px 0">No session data yet — log some sets in your program.</p>`}
+  <div class="sec" style="display:flex;align-items:center;gap:8px">
+    <span>e1RM Over Time —</span>
+    <div style="position:relative;flex:1;max-width:260px">
+      <input type="text" id="e1rm-ex-search"
+        value="${_analyticsE1rmEx}"
+        placeholder="Search exercise…"
+        oninput="filterAnalyticsEx(this.value)"
+        onfocus="showAnalyticsExList()"
+        style="width:100%;background:var(--sf2);border:1px solid var(--bd);
+        border-radius:4px;color:var(--tx);padding:4px 8px;font-size:11px">
+      <div id="e1rm-ex-list" style="display:none;position:absolute;top:100%;left:0;right:0;
+        background:var(--sf);border:1px solid var(--bd);border-radius:4px;
+        max-height:180px;overflow-y:auto;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.4)">
+        ${exOptions.map(ex=>`<div style="padding:7px 10px;font-size:11px;cursor:pointer;
+          ${ex===_analyticsE1rmEx?"color:var(--ac);":""}border-bottom:1px solid var(--bd)"
+          onclick="selectAnalyticsEx('${ex.replace(/'/g,"\\'")}')">
+          ${ex}</div>`).join("")}
+      </div>
+    </div>
+  </div>
   <div class="chart-wrap"><canvas id="ch-e1rm"></canvas></div>
   <div class="sec">Volume by Muscle Group</div>
   <div class="chart-wrap"><canvas id="ch-muscle"></canvas></div>`;
 
+  // Close dropdown when clicking outside
+  setTimeout(()=>{
+    document.addEventListener("click", function closeList(e){
+      if(!e.target.closest("#e1rm-ex-search")&&!e.target.closest("#e1rm-ex-list")){
+        const l=document.getElementById("e1rm-ex-list");
+        if(l) l.style.display="none";
+        document.removeEventListener("click",closeList);
+      }
+    });
+  },0);
+
+  renderAnalyticsCharts(primary,volLabels,volData,mvL,mvD,mvC);
+}
+
+function showAnalyticsExList(){
+  const l=document.getElementById("e1rm-ex-list");
+  if(l) l.style.display="block";
+}
+
+function filterAnalyticsEx(q){
+  const l=document.getElementById("e1rm-ex-list");
+  if(!l) return;
+  l.style.display="block";
+  [...l.children].forEach(el=>{
+    el.style.display=el.textContent.toLowerCase().includes(q.toLowerCase())?"":"none";
+  });
+}
+
+function selectAnalyticsEx(ex){
+  _analyticsE1rmEx=ex;
+  const inp=document.getElementById("e1rm-ex-search");
+  if(inp) inp.value=ex;
+  const l=document.getElementById("e1rm-ex-list");
+  if(l) l.style.display="none";
+  // Re-render just the e1RM chart
+  const progs=programs[currentId]||[];
+  const primary=progs.find(p=>p.is_primary&&!p.is_archived)||progs[0];
+  if(!primary) return;
+  const ac=accent();const gc="rgba(255,255,255,0.05)";
+  const tc=document.documentElement.getAttribute("data-theme")==="dark"?"#f0f0f0":"#111";
+  const {labels,data}=getE1rmSeries(primary,ex);
+  if(charts.e1rm) charts.e1rm.destroy();
+  const canvas=document.getElementById("ch-e1rm");
+  if(!canvas) return;
+  charts.e1rm=new Chart(canvas,{
+    type:"line",data:{labels,datasets:[{label:ex,data,
+      borderColor:ac,backgroundColor:ac+"22",tension:.3,pointBackgroundColor:ac,pointRadius:4,fill:true}]},
+    options:{responsive:true,plugins:{legend:{display:false}},spanGaps:true,
+      scales:{y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+"kg"}},
+        x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}
+  });
+}
+
+function getE1rmSeries(primary,exName){
+  const labels=[],data=[];
+  if(!primary) return {labels,data};
+  for(let wi=0;wi<primary.weeks;wi++){
+    WEEK_DAYS.forEach(day=>{
+      const d=primary.data?.days?.[day];if(!d?.exercises) return;
+      d.exercises.forEach((ex,ei)=>{
+        if(ex.name!==exName) return;
+        const sets=parseInt(get(`p${primary.id}-w${wi}-${day}-ex${ei}-sets`))||ex.sets||3;
+        let best=0;
+        for(let s=0;s<sets;s++){
+          const w=parseFloat(get(`p${primary.id}-w${wi}-${day}-ex${ei}-s${s}-wt`));
+          const r=parseFloat(get(`p${primary.id}-w${wi}-${day}-ex${ei}-s${s}-reps`));
+          const v=e1rm(w,r);if(v&&v>best) best=v;
+        }
+        if(best>0){labels.push(`W${wi+1} ${day.slice(0,3)}`);data.push(parseFloat(best.toFixed(1)));}
+      });
+    });
+  }
+  return {labels,data};
+}
+
+function renderAnalyticsCharts(primary,volLabels,volData,mvL,mvD,mvC){
   setTimeout(()=>{
     const ac=accent();const gc="rgba(255,255,255,0.05)";
     const tc=document.documentElement.getAttribute("data-theme")==="dark"?"#f0f0f0":"#111";
-    if(charts.vol) charts.vol.destroy();
-    charts.vol=new Chart(document.getElementById("ch-vol"),{
-      type:"line",data:{labels:volLabels,datasets:[{label:"Volume (kg)",data:volData,
-        borderColor:ac,backgroundColor:ac+"22",tension:.3,pointBackgroundColor:ac,pointRadius:4,fill:true}]},
-      options:{responsive:true,plugins:{legend:{display:false}},
-        scales:{y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
-          x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}
-    });
+
+    // Volume chart
+    const volCanvas=document.getElementById("ch-vol");
+    if(volCanvas&&volData.length){
+      if(charts.vol) charts.vol.destroy();
+      charts.vol=new Chart(volCanvas,{
+        type:"line",data:{labels:volLabels,datasets:[{label:"Volume (kg)",data:volData,
+          borderColor:ac,backgroundColor:ac+"22",tension:.3,pointBackgroundColor:ac,pointRadius:4,fill:true}]},
+        options:{responsive:true,plugins:{legend:{display:false}},
+          scales:{y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v.toLocaleString()+"kg"}},
+            x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}
+      });
+    }
+
+    // e1RM chart for selected exercise
+    const {labels:e1rmLabels,data:e1rmData}=getE1rmSeries(primary,_analyticsE1rmEx);
     if(charts.e1rm) charts.e1rm.destroy();
-    charts.e1rm=new Chart(document.getElementById("ch-e1rm"),{
-      type:"line",data:{labels:e1rmLabels,datasets:[{label:"Bench e1RM",data:e1rmData,
-        borderColor:ac,backgroundColor:ac+"22",tension:.3,pointBackgroundColor:ac,pointRadius:4,fill:true}]},
-      options:{responsive:true,plugins:{legend:{display:false}},spanGaps:true,
-        scales:{y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+"kg"}},
-          x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}
-    });
+    const e1rmCanvas=document.getElementById("ch-e1rm");
+    if(e1rmCanvas){
+      charts.e1rm=new Chart(e1rmCanvas,{
+        type:"line",data:{labels:e1rmLabels,datasets:[{label:_analyticsE1rmEx,data:e1rmData,
+          borderColor:ac,backgroundColor:ac+"22",tension:.3,pointBackgroundColor:ac,pointRadius:4,fill:true}]},
+        options:{responsive:true,plugins:{legend:{display:false}},spanGaps:true,
+          scales:{y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+"kg"}},
+            x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}
+      });
+    }
+
+    // Muscle volume chart
     if(charts.muscle) charts.muscle.destroy();
-    charts.muscle=new Chart(document.getElementById("ch-muscle"),{
-      type:"bar",data:{labels:mvL.map(m=>m.charAt(0).toUpperCase()+m.slice(1)),
-        datasets:[{data:mvD,backgroundColor:mvC,borderRadius:3}]},
-      options:{responsive:true,indexAxis:"y",plugins:{legend:{display:false}},
-        scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
-          y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}
-    });
+    const muscleCanvas=document.getElementById("ch-muscle");
+    if(muscleCanvas&&mvL.length){
+      charts.muscle=new Chart(muscleCanvas,{
+        type:"bar",data:{labels:mvL.map(m=>m.charAt(0).toUpperCase()+m.slice(1)),
+          datasets:[{data:mvD,backgroundColor:mvC,borderRadius:3}]},
+        options:{responsive:true,indexAxis:"y",plugins:{legend:{display:false}},
+          scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
+            y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}
+      });
+    }
   },100);
 }
 
@@ -2818,73 +2936,86 @@ function buildBody(){
     }
   }
 
-  const maxV=Math.max(...Object.values(mv),1);
-  function muscleStyle(id){
-    const group=MUSCLE_ID_MAP[id]||"core";
-    const pct=(mv[group]||0)/maxV;
-    if(pct<0.01) return {colour:"#1e1e1e",opacity:0.6};
-    const r=Math.round(232*pct),g=Math.round(255*pct);
-    return {colour:`rgb(${r},${g},0)`,opacity:0.25+0.75*pct};
-  }
-
-  const headNeck=`
-    <ellipse cx="100" cy="30" rx="21" ry="26" fill="#1e1e1e" stroke="#444" stroke-width="1.2"/>
-    <path d="M91 52 Q91 64 88 68 L112 68 Q109 64 109 52Z" fill="#1a1a1a" stroke="#444" stroke-width="1"/>`;
-  const decor=`
-    <ellipse cx="79" cy="326" rx="11" ry="9" fill="#222" stroke="#444" stroke-width="1"/>
-    <ellipse cx="121" cy="326" rx="11" ry="9" fill="#222" stroke="#444" stroke-width="1"/>
-    <ellipse cx="80" cy="414" rx="10" ry="6" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-    <ellipse cx="120" cy="414" rx="10" ry="6" fill="#1a1a1a" stroke="#444" stroke-width="1"/>`;
-
-  const frontShapes=Object.entries(FRONT_MUSCLES).map(([id,shape])=>{
-    const{colour,opacity}=muscleStyle(id);
-    return renderMuscleShape(id,shape,colour,opacity);
-  }).join("");
-
-  const backShapes=Object.entries(BACK_MUSCLES).map(([id,shape])=>{
-    const{colour,opacity}=muscleStyle(id);
-    return renderMuscleShape(id,shape,colour,opacity);
-  }).join("");
+  // Fixed radar axes — always show all major groups
+  const RADAR_GROUPS=[
+    "chest","back","shoulders","biceps","triceps",
+    "quads","hamstrings","glutes","calves","core"
+  ];
+  const radarLabels=RADAR_GROUPS.map(g=>g.charAt(0).toUpperCase()+g.slice(1));
+  const radarData=RADAR_GROUPS.map(g=>Math.round((mv[g]||0)/1000*10)/10); // tonnes, 1dp
+  const maxVal=Math.max(...radarData,1);
 
   document.getElementById("page-body").innerHTML=`
   <div class="hero" style="padding-top:12px">
-    <h1 style="font-size:clamp(26px,5vw,44px)">BODY<br><span>HEATMAP</span></h1>
-    <p class="hero-sub">Brighter = more volume · primary program · edit FRONT_MUSCLES / BACK_MUSCLES in code to reshape</p>
+    <h1 style="font-size:clamp(26px,5vw,44px)">MUSCLE<br><span>BALANCE</span></h1>
+    <p class="hero-sub">Volume per muscle group · primary program · all logged sessions</p>
   </div>
-  <div class="body-wrap">
-    <div class="body-panel">
-      <h4>FRONT</h4>
-      <svg viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:380px">
-        ${headNeck}
-        <path d="${BODY_OUTLINE_PATH}" fill="#1a1a1a" stroke="#444" stroke-width="1.2"/>
-        ${frontShapes}${decor}
-      </svg>
-    </div>
-    <div class="body-panel">
-      <h4>BACK</h4>
-      <svg viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:380px">
-        ${headNeck}
-        <path d="${BODY_OUTLINE_PATH}" fill="#1a1a1a" stroke="#444" stroke-width="1.2"/>
-        ${backShapes}${decor}
-      </svg>
-    </div>
+  <div class="chart-wrap" style="max-width:420px;margin:0 auto 16px">
+    <canvas id="ch-radar" style="max-height:380px"></canvas>
   </div>
-  <div style="background:var(--sf);border-radius:5px;padding:12px;margin-top:9px">
-    <div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:7px">Volume Legend</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:5px">
-      ${Object.entries(mv).sort(([,a],[,b])=>b-a).map(([m,v])=>{
-        const pct=(mv[m]||0)/maxV;
-        const rc=Math.round(232*pct),gc=Math.round(255*pct);
-        const col=pct<0.01?"#1e1e1e":`rgb(${rc},${gc},0)`;
-        const op=pct<0.01?0.3:0.25+0.75*pct;
-        return `<div style="display:flex;align-items:center;gap:5px;font-size:11px">
-          <div style="width:9px;height:9px;border-radius:50%;background:${col};opacity:${op};flex-shrink:0"></div>
-          <span style="color:var(--mu)">${m.charAt(0).toUpperCase()+m.slice(1)}</span>
-          <span style="color:var(--ac);margin-left:auto">${(v/1000).toFixed(1)}t</span>
+  <div style="background:var(--sf);border-radius:5px;padding:12px">
+    <div style="font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:9px">Volume Breakdown</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px">
+      ${RADAR_GROUPS.map(g=>{
+        const val=mv[g]||0;
+        const pct=maxVal>0?(val/1000)/maxVal:0;
+        const col=pct<0.01?"var(--bd)":accent();
+        return `<div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+            <span style="color:${val>0?"var(--tx)":"var(--mu)"}">${g.charAt(0).toUpperCase()+g.slice(1)}</span>
+            <span style="color:var(--ac)">${val>0?(val/1000).toFixed(1)+"t":"—"}</span>
+          </div>
+          <div style="height:3px;background:var(--sf2);border-radius:2px">
+            <div style="height:100%;width:${Math.round(pct*100)}%;background:${col};border-radius:2px;transition:.3s"></div>
+          </div>
         </div>`;
       }).join("")}
     </div>
   </div>`;
+
+  setTimeout(()=>{
+    const ac=accent();
+    const tc=document.documentElement.getAttribute("data-theme")==="dark"?"#f0f0f0":"#111";
+    const gc="rgba(255,255,255,0.08)";
+    if(charts.radar) charts.radar.destroy();
+    charts.radar=new Chart(document.getElementById("ch-radar"),{
+      type:"radar",
+      data:{
+        labels:radarLabels,
+        datasets:[{
+          label:"Volume (tonnes)",
+          data:radarData,
+          borderColor:ac,
+          backgroundColor:ac+"33",
+          pointBackgroundColor:ac,
+          pointBorderColor:ac,
+          pointRadius:4,
+          borderWidth:2
+        }]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{display:false}},
+        scales:{
+          r:{
+            min:0,
+            max:maxVal,
+            ticks:{
+              display:false,
+              stepSize:maxVal/4
+            },
+            grid:{color:gc},
+            angleLines:{color:gc},
+            pointLabels:{
+              color:tc,
+              font:{size:11,family:"DM Sans"},
+              padding:8
+            }
+          }
+        }
+      }
+    });
+  },100);
 }
 
 // ══════════════════════════════════════════════════════
@@ -3137,9 +3268,11 @@ function togglePublicStats(){
 function doTogglePublicStats(){
   const nowOn=!isPublicStats();
   if(!db[currentId]) db[currentId]={};
-  db[currentId]["__public_stats__"]=nowOn?"1":"0"; // write directly to ensure immediate read
+  db[currentId]["__public_stats__"]=nowOn?"1":"0";
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>dbSave(currentId),1200);
+  // Sync to profiles table so other users see the change
+  _sb.from("profiles").update({public_stats:nowOn}).eq("user_id",currentId).catch(()=>{});
   updatePublicStatsBtn();
   updateDash();
 }
@@ -3409,7 +3542,7 @@ async function syncProfile(user){
     pr_bench:meta.pr||null,
     pr_squat:meta.pr_squat||null,
     pr_dl:meta.pr_dl||null,
-    public_stats:true,
+    public_stats:isPublicStats(), // respect current setting
     updated_at:new Date().toISOString()
   };
   const {error}=await _sb.from("profiles").upsert(payload,{onConflict:"user_id"});
