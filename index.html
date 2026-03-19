@@ -4703,6 +4703,30 @@ async function bootApp(session){
 }
 
 // Auth state listener — fires on page load and on sign-in/out
+// Exchange auth codes/tokens for session if present in URL
+(async()=>{
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get("code");
+  const tokenHash=params.get("token_hash");
+  const type=params.get("type");
+  if(tokenHash&&type){
+    try{
+      const {error}=await _sb.auth.verifyOtp({token_hash:tokenHash,type});
+      if(error) console.warn("Token verify failed:",error.message);
+    }catch(e){
+      console.warn("Token verify error:",e.message);
+    }
+    window.history.replaceState(null,"",window.location.pathname);
+  } else if(code){
+    try{
+      await _sb.auth.exchangeCodeForSession(code);
+    }catch(e){
+      console.warn("Code exchange failed:",e.message);
+    }
+    window.history.replaceState(null,"",window.location.pathname);
+  }
+})();
+
 _sb.auth.onAuthStateChange((event,session)=>{
   if(event==="PASSWORD_RECOVERY"){
     // User clicked reset link — show new password form
