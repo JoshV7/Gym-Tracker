@@ -292,6 +292,7 @@ select{cursor:pointer;}
 .login-field input{width:100%;background:var(--bg);border:1px solid var(--bd);
   border-radius:4px;color:var(--tx);padding:9px 10px;font-size:13px;
   font-family:'DM Sans',sans-serif;transition:.2s;}
+.login-field input[type="email"]{text-align:center;}
 .login-field input:focus{outline:none;border-color:var(--ac);}
 .login-btn{width:100%;padding:10px;border-radius:4px;font-size:11px;font-weight:700;
   letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:none;
@@ -4442,6 +4443,7 @@ async function doDeleteAccount(){
 function openBugReport(){
   document.getElementById("bug-description").value="";
   document.getElementById("bug-steps").value="";
+  document.getElementById("bug-submit-status").textContent="";
   openModal("mo-bug");
 }
 
@@ -4450,17 +4452,9 @@ async function submitBugReport(){
   if(!desc){alert("Please describe the bug.");return;}
   const steps=document.getElementById("bug-steps").value.trim();
   const a=ca();
-  const report={
-    user:a?.name||"unknown",
-    user_id:currentId,
-    description:desc,
-    steps:steps||null,
-    url:window.location.href,
-    ua:navigator.userAgent.slice(0,150),
-    ts:new Date().toISOString()
-  };
-
-  // Store in Supabase
+  const statusEl=document.getElementById("bug-submit-status");
+  const btn=document.querySelector("#mo-bug .mb.pri");
+  btn.disabled=true;btn.textContent="Sending…";
   try{
     await _sb.from("bug_reports").insert({
       user_id:currentId,
@@ -4469,19 +4463,15 @@ async function submitBugReport(){
       steps:steps||null,
       created_at:new Date().toISOString()
     });
+    statusEl.textContent="✓ Thanks — report saved!";
+    statusEl.style.color="var(--gn)";
+    setTimeout(()=>closeModal("mo-bug"),1500);
   }catch(e){
-    console.warn("Bug report DB save failed:",e.message);
+    statusEl.textContent="Failed to save — try again.";
+    statusEl.style.color="var(--red)";
+    console.error("Bug report failed:",e.message);
   }
-
-  // Also open mailto as backup
-  const subject=encodeURIComponent(`[Gym Tracker Bug] ${desc.slice(0,60)}`);
-  const body=encodeURIComponent(
-    `User: ${a?.name||"unknown"} (${currentId})\n\nDescription:\n${desc}\n\nSteps:\n${steps||"—"}\n\nURL: ${window.location.href}`
-  );
-  window.location.href=`mailto:joshuavdm7@gmail.com?subject=${subject}&body=${body}`;
-
-  closeModal("mo-bug");
-  alert("Bug report sent — thanks!");
+  btn.disabled=false;btn.textContent="Send Report";
 }
 
 // ══════════════════════════════════════════════════════
@@ -4642,6 +4632,7 @@ _sb.auth.onAuthStateChange((event,session)=>{
       <button class="mb sec" onclick="closeModal('mo-bug')">Cancel</button>
       <button class="mb pri" onclick="submitBugReport()">Send Report</button>
     </div>
+    <p id="bug-submit-status" style="font-size:11px;text-align:center;margin-top:8px"></p>
   </div>
 </div>
 
