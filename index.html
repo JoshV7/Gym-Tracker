@@ -482,6 +482,22 @@ select{cursor:pointer;}
       </div>
       <button class="login-btn pri" onclick="completeProfile()">Continue</button>
     </div>
+
+    <!-- CONFIRM EMAIL STATE -->
+    <div id="confirm-email-form" style="display:none;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">📬</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;margin-bottom:8px">Check Your Email</div>
+      <p style="font-size:12px;color:var(--mu);margin-bottom:6px">
+        We sent a confirmation link to
+      </p>
+      <p id="confirm-email-addr" style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:16px"></p>
+      <p style="font-size:11px;color:var(--mu);margin-bottom:16px">
+        Click the link in the email to activate your account. Once confirmed you'll be signed in automatically.
+      </p>
+      <button class="login-btn sec" onclick="resendConfirmation()">Resend Email</button>
+      <button class="login-btn sec" style="margin-top:0" onclick="showLogin()">Back to Sign In</button>
+      <p id="resend-status" style="font-size:11px;color:var(--gn);min-height:16px;margin-top:6px"></p>
+    </div>
   </div>
 </div>
 
@@ -834,31 +850,52 @@ const _sb = window.supabase.createClient(SB_URL, SB_KEY, {
 function loginErr(msg){document.getElementById("login-err").textContent=msg||"";}
 
 function showLogin(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="login-form"?"":"none";
   });
   loginErr();
 }
 function showSignUp(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="signup-form"?"":"none";
   });
   loginErr();
 }
 function showReset(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="reset-form"?"":"none";
   });
   loginErr();
 }
 function showProfileForm(){
-  ["login-form","signup-form","reset-form","profile-form"].forEach(id=>{
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="profile-form"?"":"none";
   });
   loginErr();
 }
 
-// ── Username availability ──────────────────────────────
+function showConfirmEmail(email){
+  ["login-form","signup-form","reset-form","profile-form","confirm-email-form"].forEach(id=>{
+    document.getElementById(id).style.display=id==="confirm-email-form"?"":"none";
+  });
+  document.getElementById("confirm-email-addr").textContent=email||"your email";
+  document.getElementById("resend-status").textContent="";
+  loginErr();
+}
+
+async function resendConfirmation(){
+  const email=document.getElementById("confirm-email-addr").textContent;
+  if(!email) return;
+  const {error}=await _sb.auth.resend({type:"signup",email});
+  const statusEl=document.getElementById("resend-status");
+  if(error){
+    statusEl.textContent=error.message;
+    statusEl.style.color="var(--red)";
+  } else {
+    statusEl.textContent="✓ Email resent!";
+    statusEl.style.color="var(--gn)";
+  }
+}
 let unameTimer=null;
 function checkUsername(val){
   const el=document.getElementById("uname-status");
@@ -912,8 +949,9 @@ async function signIn(){
   if(!email||!password){loginErr("Enter email and password.");return;}
   const {error}=await _sb.auth.signInWithPassword({email,password});
   if(error){
-    // Detect Google-linked account collision
-    if(error.message.toLowerCase().includes("already registered")||
+    if(error.message.toLowerCase().includes("email not confirmed")){
+      showConfirmEmail(email);
+    } else if(error.message.toLowerCase().includes("already registered")||
        error.message.toLowerCase().includes("provider")){
       loginErr("This email is linked to Google — tap 'Continue with Google' instead.");
     } else {
@@ -980,7 +1018,13 @@ async function signUp(){
       return;
     }
   }
-  loginErr("Account created — signing you in…");
+
+  // If session is null, email confirmation is required
+  if(data.user&&!data.session){
+    showConfirmEmail(email);
+  } else {
+    loginErr("Account created — signing you in…");
+  }
 }
 
 // ── Google sign in ──────────────────────────────────────
