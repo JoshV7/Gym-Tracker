@@ -547,17 +547,11 @@ select{cursor:pointer;}
 
     <!-- Or choose emoji -->
     <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Or Choose Emoji</div>
-    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:14px">
-      ${['💪','🏋️','🔥','⚡','🦁','🐺','🦅','🐉','🏆','👑','💀','🧠','🎯','🚀','⚔️','🛡️',
-         '🐻','🦊','🐯','🦍','🦈','🦾','🤖','👤','🌙','☀️','⭐','🌊','🗻','🌋','💎','🎭'].map(e=>
-        `<div onclick="selectAvatar('${e}')" style="font-size:22px;text-align:center;cursor:pointer;
-          padding:5px;border-radius:6px;border:2px solid transparent;transition:.15s"
-          class="avatar-opt">${e}</div>`).join('')}
-    </div>
+    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:14px"></div>
 
     <div class="md-btns">
       <button class="mb sec" onclick="closeModal('mo-avatar')">Close</button>
-      ${`<button class="mb danger" id="avatar-remove-btn" onclick="removeAvatar()" style="display:none">Remove Photo</button>`}
+      <button class="mb danger" id="avatar-remove-btn" onclick="removeAvatar()" style="display:none">Remove Photo</button>
     </div>
   </div>
 </div>
@@ -752,8 +746,29 @@ select{cursor:pointer;}
     <label>Notes</label><textarea id="prog-notes" placeholder="Goals, focus, anything…"></textarea>
     <label>Template</label>
     <div class="prog-template-grid" id="prog-tmpl-grid"></div>
-    <label>Length (weeks)</label>
-    <input type="number" id="prog-weeks" value="6" min="1" max="52" style="width:80px">
+
+    <!-- Lift picker — shown for Smolov Jr. and similar -->
+    <div id="prog-lift-picker" style="display:none;margin-top:8px">
+      <label>Main Lift</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="save-btn prog-lift-btn" style="margin:0" data-lift="Bench Press (Barbell)" onclick="selectProgLift(this)">Bench</button>
+        <button class="save-btn prog-lift-btn" style="margin:0;background:var(--sf2);color:var(--tx)" data-lift="Squat (Barbell)" onclick="selectProgLift(this)">Squat</button>
+        <button class="save-btn prog-lift-btn" style="margin:0;background:var(--sf2);color:var(--tx)" data-lift="Deadlift (Barbell)" onclick="selectProgLift(this)">Deadlift</button>
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+        <label style="font-size:11px;color:var(--mu);white-space:nowrap">Current 1RM (kg)</label>
+        <input type="number" id="prog-lift-1rm" step="0.5" placeholder="e.g. 100"
+          style="width:90px">
+        <span style="font-size:11px;color:var(--mu)" id="prog-lift-1rm-hint"></span>
+      </div>
+    </div>
+
+    <!-- Weeks — hidden for fixed-length programs -->
+    <div id="prog-weeks-row" style="margin-top:8px">
+      <label>Length (weeks)</label>
+      <input type="number" id="prog-weeks" value="6" min="1" max="52" style="width:80px">
+    </div>
+
     <div class="md-btns">
       <button class="mb sec" onclick="closeModal('mo-add-program')">Cancel</button>
       <button class="mb pri" onclick="confirmAddProgram()">Create Program</button>
@@ -1148,39 +1163,51 @@ const MUSCLE_MAP = {
 // ══════════════════════════════════════════════════════
 const PROG_TEMPLATES = {
   "Smolov Jr.": {
-    desc:"4-week bench peaking block",
+    desc:"3-week peaking block + deload · Bench, Squat, or DL",
     weeks:4,
+    fixed:true,
+    liftPicker:true, // asks which lift + current 1RM on create
+    // Days use __LIFT__ placeholder — replaced on create with chosen exercise
     days:{
-      Monday:{name:"Bench + Triceps",exercises:[
-        {name:"Bench Press (Barbell)",sets:6,reps:"6",note:"Smolov Jr. main lift"},
-        {name:"Skull Crusher (EZ Bar)",sets:3,reps:"10"},{name:"Tricep Pushdown (Rope)",sets:3,reps:"15"},
+      Monday:{name:"Day 1",exercises:[
+        {name:"__LIFT__",sets:6,reps:"6",note:"70% 1RM · rest 90s"},
+        {name:"Face Pull",sets:3,reps:"15"},{name:"Tricep Pushdown (Rope)",sets:3,reps:"12"},
       ]},
-      Tuesday:{name:"Back + Biceps",exercises:[
-        {name:"Deadlift (Barbell)",sets:4,reps:"5"},{name:"Pendlay Row",sets:4,reps:"8"},
-        {name:"Lat Pulldown (Wide)",sets:3,reps:"10"},{name:"EZ Bar Curl",sets:4,reps:"10"},
-        {name:"Hammer Curl",sets:3,reps:"12"},
-      ]},
-      Wednesday:{name:"Bench + Legs",exercises:[
-        {name:"Bench Press (Barbell)",sets:7,reps:"5",note:"Smolov Jr. main lift"},
-        {name:"Squat (Barbell)",sets:4,reps:"6"},{name:"Romanian Deadlift",sets:3,reps:"10"},
-        {name:"Leg Press",sets:3,reps:"12"},{name:"Calf Raise (Standing)",sets:3,reps:"15"},
-      ]},
-      Thursday:{name:"Shoulders + Arms",exercises:[
-        {name:"Overhead Press (Barbell)",sets:3,reps:"5"},{name:"Lateral Raise (Cable)",sets:3,reps:"15"},
+      Wednesday:{name:"Day 2",exercises:[
+        {name:"__LIFT__",sets:7,reps:"5",note:"75% 1RM · rest 90s"},
         {name:"Face Pull",sets:3,reps:"15"},{name:"EZ Bar Curl",sets:3,reps:"10"},
-        {name:"Tricep Pushdown (Rope)",sets:3,reps:"12"},
       ]},
-      Friday:{name:"Bench + Back",exercises:[
-        {name:"Bench Press (Barbell)",sets:8,reps:"4",note:"Smolov Jr. main lift"},
-        {name:"Pull Up",sets:4,reps:"max"},{name:"Lat Pulldown (Underhand)",sets:3,reps:"10"},
-        {name:"Dumbbell Row",sets:3,reps:"10"},
+      Friday:{name:"Day 3",exercises:[
+        {name:"__LIFT__",sets:8,reps:"4",note:"80% 1RM · rest 2min"},
+        {name:"Face Pull",sets:3,reps:"15"},{name:"Tricep Pushdown (Rope)",sets:3,reps:"12"},
       ]},
-      Saturday:{name:"Bench + Arms",exercises:[
-        {name:"Bench Press (Barbell)",sets:10,reps:"3",note:"Smolov Jr. main lift"},
-        {name:"Incline Dumbbell Curl",sets:3,reps:"12"},{name:"Hammer Curl",sets:3,reps:"12"},
-        {name:"Overhead Tricep Extension (Cable)",sets:3,reps:"12"},
+      Saturday:{name:"Day 4",exercises:[
+        {name:"__LIFT__",sets:10,reps:"3",note:"85% 1RM · rest 2-3min"},
+        {name:"Face Pull",sets:3,reps:"15"},
+      ]},
+      Tuesday:{name:"Accessories",exercises:[
+        {name:"Pull Up",sets:4,reps:"max"},{name:"Dumbbell Row",sets:3,reps:"10"},
+        {name:"EZ Bar Curl",sets:3,reps:"12"},{name:"Lateral Raise (Dumbbell)",sets:3,reps:"15"},
+      ]},
+      Thursday:{name:"Accessories",exercises:[
+        {name:"Romanian Deadlift",sets:3,reps:"8"},{name:"Leg Press",sets:3,reps:"12"},
+        {name:"Leg Curl (Lying)",sets:3,reps:"12"},{name:"Calf Raise (Standing)",sets:3,reps:"15"},
       ]},
       Sunday:{name:"Rest",exercises:[]},
+    },
+    // Week 4 is deload — overrides days
+    deloadWeek:{
+      Monday:{name:"Deload Day 1",exercises:[
+        {name:"__LIFT__",sets:3,reps:"5",note:"50% 1RM · easy — flush fatigue"},
+      ]},
+      Wednesday:{name:"Deload Day 2",exercises:[
+        {name:"__LIFT__",sets:3,reps:"3",note:"60% 1RM · test readiness"},
+      ]},
+      Friday:{name:"Test Day",exercises:[
+        {name:"__LIFT__",sets:1,reps:"1",note:"New 1RM attempt — go for it"},
+      ]},
+      Tuesday:{name:"Rest",exercises:[]},Thursday:{name:"Rest",exercises:[]},
+      Saturday:{name:"Rest",exercises:[]},Sunday:{name:"Rest",exercises:[]},
     }
   },
   "PPL": {
@@ -1250,36 +1277,36 @@ const PROG_TEMPLATES = {
     }
   },
   "5/3/1": {
-    desc:"Jim Wendler's strength program",
+    desc:"Wendler's strength program · 4-week cycles",
     weeks:4,
+    fixed:true,
     days:{
-      Monday:{name:"Squat",exercises:[
-        {name:"Squat (Barbell)",sets:3,reps:"5/3/1",note:"Work up to top set, backdown volume"},
+      Monday:{name:"Squat Day",exercises:[
+        {name:"Squat (Barbell)",sets:3,reps:"5/3/1",note:"W1: 65/75/85% · W2: 70/80/90% · W3: 75/85/95% · W4: deload 40/50/60%"},
         {name:"Romanian Deadlift",sets:3,reps:"10"},{name:"Leg Press",sets:3,reps:"15"},
         {name:"Leg Curl (Lying)",sets:3,reps:"12"},
       ]},
-      Tuesday:{name:"Bench",exercises:[
-        {name:"Bench Press (Barbell)",sets:3,reps:"5/3/1",note:"Work up to top set"},
+      Tuesday:{name:"Bench Day",exercises:[
+        {name:"Bench Press (Barbell)",sets:3,reps:"5/3/1",note:"W1: 65/75/85% · W2: 70/80/90% · W3: 75/85/95% · W4: deload"},
         {name:"Dumbbell Row",sets:4,reps:"10"},{name:"Incline Bench Press (Dumbbell)",sets:3,reps:"12"},
         {name:"Tricep Pushdown (Rope)",sets:3,reps:"12"},{name:"EZ Bar Curl",sets:3,reps:"12"},
       ]},
       Wednesday:{name:"Rest",exercises:[]},
-      Thursday:{name:"Deadlift",exercises:[
-        {name:"Deadlift (Barbell)",sets:3,reps:"5/3/1",note:"Work up to top set"},
+      Thursday:{name:"Deadlift Day",exercises:[
+        {name:"Deadlift (Barbell)",sets:3,reps:"5/3/1",note:"W1: 65/75/85% · W2: 70/80/90% · W3: 75/85/95% · W4: deload"},
         {name:"Leg Press",sets:3,reps:"15"},{name:"Leg Curl (Seated)",sets:3,reps:"12"},
         {name:"Calf Raise (Standing)",sets:4,reps:"15"},
       ]},
-      Friday:{name:"OHP",exercises:[
-        {name:"Overhead Press (Barbell)",sets:3,reps:"5/3/1",note:"Work up to top set"},
+      Friday:{name:"OHP Day",exercises:[
+        {name:"Overhead Press (Barbell)",sets:3,reps:"5/3/1",note:"W1: 65/75/85% · W2: 70/80/90% · W3: 75/85/95% · W4: deload"},
         {name:"Pull Up",sets:4,reps:"max"},{name:"Lateral Raise (Dumbbell)",sets:4,reps:"15"},
         {name:"Face Pull",sets:3,reps:"15"},{name:"Hammer Curl",sets:3,reps:"12"},
       ]},
-      Saturday:{name:"Rest",exercises:[]},
-      Sunday:{name:"Rest",exercises:[]},
+      Saturday:{name:"Rest",exercises:[]},Sunday:{name:"Rest",exercises:[]},
     }
   },
   "Arnold Split": {
-    desc:"Chest+Back, Shoulders+Arms, Legs",
+    desc:"Chest+Back, Shoulders+Arms, Legs · 6-day",
     weeks:8,
     days:{
       Monday:{name:"Chest + Back",exercises:[
@@ -1341,23 +1368,19 @@ const PROG_TEMPLATES = {
         {name:"Leg Extension",sets:3,reps:"12-20"},{name:"Leg Curl (Seated)",sets:3,reps:"12-20"},
         {name:"Hip Thrust (Barbell)",sets:4,reps:"12-15"},{name:"Calf Raise (Seated)",sets:4,reps:"12-20"},
       ]},
-      Saturday:{name:"Rest",exercises:[]},
-      Sunday:{name:"Rest",exercises:[]},
+      Saturday:{name:"Rest",exercises:[]},Sunday:{name:"Rest",exercises:[]},
     }
   },
   "Blank": {
-    desc:"Build your own from scratch",
+    desc:"Start from scratch",
     weeks:4,
     days:{
-      Monday:{name:"Day 1",exercises:[]},
-      Tuesday:{name:"Day 2",exercises:[]},
-      Wednesday:{name:"Day 3",exercises:[]},
-      Thursday:{name:"Day 4",exercises:[]},
-      Friday:{name:"Day 5",exercises:[]},
-      Saturday:{name:"Day 6",exercises:[]},
+      Monday:{name:"Day A",exercises:[]},Tuesday:{name:"Day B",exercises:[]},
+      Wednesday:{name:"Rest",exercises:[]},Thursday:{name:"Day C",exercises:[]},
+      Friday:{name:"Day D",exercises:[]},Saturday:{name:"Rest",exercises:[]},
       Sunday:{name:"Rest",exercises:[]},
     }
-  }
+  },
 };
 
 // ══════════════════════════════════════════════════════
@@ -2042,6 +2065,8 @@ function updateDash(){
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="changeUsername()">Change Username</button>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+      onclick="openAvatarPicker()">🖼 Avatar</button>
+    <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="openLinkAccounts()">🔗 Linked Accounts</button>
     <button class="save-btn" style="margin-top:8px;background:var(--red)"
       onclick="openDeleteAccount()">Delete Account</button>
@@ -2066,12 +2091,15 @@ function updateDash(){
 // ══════════════════════════════════════════════════════
 //  PROGRAM PAGE
 // ══════════════════════════════════════════════════════
+let _selectedProgLift="Bench Press (Barbell)";
+
 function openAddProgram(){
   document.getElementById("prog-name").value="";
   document.getElementById("prog-notes").value="";
-  document.getElementById("prog-weeks").value="6";
   selectedTemplate="Smolov Jr.";
+  _selectedProgLift="Bench Press (Barbell)";
   buildTemplateGrid();
+  updateProgModalForTemplate("Smolov Jr.");
   openModal("mo-add-program");
 }
 
@@ -2080,28 +2108,98 @@ function buildTemplateGrid(){
     Object.entries(PROG_TEMPLATES).map(([name,t])=>`
       <div class="prog-tmpl${selectedTemplate===name?" selected":""}" onclick="selectTemplate('${name}')">
         <h4>${name}</h4><p>${t.desc}</p>
-        <p style="color:var(--ac);font-size:9px;margin-top:3px">${t.weeks}wk default</p>
+        <p style="color:var(--ac);font-size:9px;margin-top:3px">${t.fixed?t.weeks+"wk fixed":t.weeks+"wk default"}</p>
       </div>`).join("");
 }
 
 function selectTemplate(name){
   selectedTemplate=name;
-  document.getElementById("prog-weeks").value=PROG_TEMPLATES[name]?.weeks||4;
   buildTemplateGrid();
+  updateProgModalForTemplate(name);
+}
+
+function updateProgModalForTemplate(name){
+  const tmpl=PROG_TEMPLATES[name]||{};
+  // Fixed-length programs hide the weeks input
+  document.getElementById("prog-weeks-row").style.display=tmpl.fixed?"none":"";
+  document.getElementById("prog-weeks").value=tmpl.weeks||4;
+  // Lift picker
+  const showLift=!!tmpl.liftPicker;
+  document.getElementById("prog-lift-picker").style.display=showLift?"":"none";
+  if(showLift){
+    // Auto-fill current 1RM from athlete data
+    const a=ca();
+    const liftMap={
+      "Bench Press (Barbell)":a?.pr||0,
+      "Squat (Barbell)":a?.pr_squat||0,
+      "Deadlift (Barbell)":a?.pr_dl||0
+    };
+    const rm=liftMap[_selectedProgLift]||0;
+    document.getElementById("prog-lift-1rm").value=rm||"";
+    document.getElementById("prog-lift-1rm-hint").textContent=rm?`(your current PR)`: "";
+  }
+}
+
+function selectProgLift(btn){
+  _selectedProgLift=btn.dataset.lift;
+  document.querySelectorAll(".prog-lift-btn").forEach(b=>{
+    b.style.background=b===btn?"var(--ac)":"var(--sf2)";
+    b.style.color=b===btn?"#000":"var(--tx)";
+  });
+  // Update 1RM hint
+  const a=ca();
+  const liftMap={
+    "Bench Press (Barbell)":a?.pr||0,
+    "Squat (Barbell)":a?.pr_squat||0,
+    "Deadlift (Barbell)":a?.pr_dl||0
+  };
+  const rm=liftMap[_selectedProgLift]||0;
+  document.getElementById("prog-lift-1rm").value=rm||"";
+  document.getElementById("prog-lift-1rm-hint").textContent=rm?"(your current PR)":"";
 }
 
 async function confirmAddProgram(){
   const name=document.getElementById("prog-name").value.trim()||selectedTemplate;
   const notes=document.getElementById("prog-notes").value.trim();
-  const weeks=parseInt(document.getElementById("prog-weeks").value)||4;
   const tmpl=PROG_TEMPLATES[selectedTemplate];
+  const weeks=tmpl?.fixed?tmpl.weeks:(parseInt(document.getElementById("prog-weeks").value)||4);
   const id=currentId+"-prog-"+Date.now();
   const isFirst=!(programs[currentId]||[]).filter(p=>!p.is_archived).length;
+
+  // Deep copy template days
+  let days=JSON.parse(JSON.stringify(tmpl?.days||{}));
+
+  // Replace __LIFT__ placeholder for lift-picker templates
+  if(tmpl?.liftPicker){
+    const liftName=_selectedProgLift;
+    const rm1=parseFloat(document.getElementById("prog-lift-1rm").value)||0;
+    const replaceLift=(obj)=>{
+      if(Array.isArray(obj)){
+        return obj.map(replaceLift);
+      } else if(obj&&typeof obj==="object"){
+        const n={};
+        for(const k in obj){
+          if(k==="name"&&obj[k]==="__LIFT__") n[k]=liftName;
+          else n[k]=replaceLift(obj[k]);
+        }
+        return n;
+      }
+      return obj;
+    };
+    days=replaceLift(days);
+
+    // Also handle deload week if present
+    if(tmpl.deloadWeek){
+      const deloadDays=replaceLift(JSON.parse(JSON.stringify(tmpl.deloadWeek)));
+      // Inject deload as the last week's days in data
+      days.__deload__=deloadDays;
+    }
+  }
 
   const prog={
     id,athlete:currentId,name,notes,template:selectedTemplate,
     weeks,is_primary:isFirst,is_archived:false,
-    data:{days:JSON.parse(JSON.stringify(tmpl?.days||{}))},
+    data:{days},
   };
 
   if(!programs[currentId]) programs[currentId]=[];
@@ -2113,7 +2211,6 @@ async function confirmAddProgram(){
   // Navigate to Programs tab, select new program
   currentSub.prog=id;
   currentSub["prog-week"]="w0";
-  // Mark Programs tab active in main nav
   document.querySelectorAll(".mtab").forEach(t=>{
     t.classList.toggle("active",t.dataset.page==="prog");
   });
@@ -2187,12 +2284,15 @@ function buildProgWeek(progId,subId){
   }
 
   const wi=parseInt(subId.replace("w",""));
+  const isDeload=prog.data?.days?.__deload__&&wi===prog.weeks-1;
+  const weekLabel=isDeload?"DELOAD / TEST":"Week "+(wi+1);
+
   let html=`<div class="hero" style="padding-top:12px">
-    <h1 style="font-size:clamp(26px,5vw,44px)">${prog.name.toUpperCase()}<br><span>Week ${wi+1}</span></h1>
-    <p class="hero-sub">Log every set · auto-saves</p>
+    <h1 style="font-size:clamp(26px,5vw,44px)">${prog.name.toUpperCase()}<br><span>${weekLabel}</span></h1>
+    <p class="hero-sub">${isDeload?"Reduce intensity · attempt new 1RM on test day":"Log every set · auto-saves"}</p>
   </div>`;
 
-  const days=prog.data?.days||{};
+  const days=isDeload?(prog.data?.days?.__deload__||{}):(prog.data?.days||{});
 
   WEEK_DAYS.forEach(day=>{
     const dayData=days[day];
@@ -3380,11 +3480,20 @@ function avatarHtml(emoji,colour,avatarUrl,size=36,fontSize=18){
 }
 
 function openAvatarPicker(){
-  // Update preview with current avatar
-  const a=ca();
-  const preview=document.getElementById("avatar-preview");
   const curUrl=_cachedMeta?.avatar_url||"";
   const curEmoji=_cachedMeta?.avatar_emoji||"💪";
+
+  // Populate emoji grid
+  const grid=document.getElementById("avatar-grid");
+  grid.innerHTML=AVATAR_EMOJIS.map(e=>`
+    <div onclick="selectAvatar('${e}')"
+      style="font-size:22px;text-align:center;cursor:pointer;padding:5px;border-radius:6px;
+      border:2px solid ${e===curEmoji&&!curUrl?"var(--ac)":"transparent"};
+      background:${e===curEmoji&&!curUrl?"var(--sf2)":""};transition:.15s"
+      class="avatar-opt">${e}</div>`).join("");
+
+  // Update preview
+  const preview=document.getElementById("avatar-preview");
   if(curUrl){
     preview.innerHTML=`<img src="${curUrl}" style="width:100%;height:100%;object-fit:cover">`;
     document.getElementById("avatar-remove-btn").style.display="";
@@ -3394,11 +3503,6 @@ function openAvatarPicker(){
   }
   document.getElementById("avatar-file-name").textContent="No file chosen";
   document.getElementById("avatar-upload-progress").style.display="none";
-  // Highlight current emoji
-  document.querySelectorAll(".avatar-opt").forEach(el=>{
-    el.style.borderColor=el.textContent===curEmoji&&!curUrl?"var(--ac)":"transparent";
-    el.style.background=el.textContent===curEmoji&&!curUrl?"var(--sf2)":"";
-  });
   openModal("mo-avatar");
 }
 
@@ -3407,31 +3511,29 @@ async function handleAvatarUpload(input){
   if(!file) return;
   document.getElementById("avatar-file-name").textContent=file.name;
   document.getElementById("avatar-upload-progress").style.display="block";
-  document.getElementById("avatar-upload-bar").style.width="20%";
-  document.getElementById("avatar-upload-status").textContent="Uploading…";
+  document.getElementById("avatar-upload-bar").style.width="10%";
+  document.getElementById("avatar-upload-status").textContent="Processing…";
 
   try{
-    // Upload to Supabase storage under user's folder
-    const ext=file.name.split(".").pop().toLowerCase()||"jpg";
-    const path=`${currentId}/avatar.${ext}`;
+    // Circle-crop via canvas before upload
+    const croppedBlob=await circleCropImage(file);
 
-    document.getElementById("avatar-upload-bar").style.width="50%";
+    document.getElementById("avatar-upload-bar").style.width="40%";
+    document.getElementById("avatar-upload-status").textContent="Uploading…";
 
-    const {data,error}=await _sb.storage.from("avatars").upload(path,file,{
+    const path=`${currentId}/avatar.webp`;
+
+    const {data,error}=await _sb.storage.from("avatars").upload(path,croppedBlob,{
       upsert:true,
-      contentType:file.type
+      contentType:"image/webp"
     });
     if(error) throw error;
 
     document.getElementById("avatar-upload-bar").style.width="80%";
 
-    // Get public URL
     const {data:{publicUrl}}=_sb.storage.from("avatars").getPublicUrl(path);
-
-    // Add cache-busting to force refresh
     const url=publicUrl+"?t="+Date.now();
 
-    // Save to metadata and profiles
     await _sb.auth.updateUser({data:{avatar_url:url,avatar_emoji:null}});
     if(_cachedMeta){_cachedMeta.avatar_url=url;_cachedMeta.avatar_emoji=null;}
     _sb.from("profiles").update({avatar_url:url,avatar_emoji:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
@@ -3439,13 +3541,10 @@ async function handleAvatarUpload(input){
     document.getElementById("avatar-upload-bar").style.width="100%";
     document.getElementById("avatar-upload-status").textContent="Done ✓";
 
-    // Update preview
-    document.getElementById("avatar-preview").innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    document.getElementById("avatar-preview").innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
     document.getElementById("avatar-remove-btn").style.display="";
 
-    // Refresh chip
     const a=ca();if(a){a.avatar_url=url;a.avatar_emoji=null;renderChips();}
-
     setTimeout(()=>{closeModal("mo-avatar");},800);
 
   }catch(err){
@@ -3453,6 +3552,37 @@ async function handleAvatarUpload(input){
     document.getElementById("avatar-upload-bar").style.background="var(--red)";
     console.error("Avatar upload failed:",err);
   }
+}
+
+function circleCropImage(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const size=Math.min(img.width,img.height);
+      const canvas=document.createElement("canvas");
+      canvas.width=400;canvas.height=400;
+      const ctx=canvas.getContext("2d");
+
+      // Clip to circle
+      ctx.beginPath();
+      ctx.arc(200,200,200,0,Math.PI*2);
+      ctx.clip();
+
+      // Draw image centered and cropped to square
+      const sx=(img.width-size)/2;
+      const sy=(img.height-size)/2;
+      ctx.drawImage(img,sx,sy,size,size,0,0,400,400);
+
+      canvas.toBlob(blob=>{
+        if(blob) resolve(blob);
+        else reject(new Error("Canvas export failed"));
+      },"image/webp",0.9);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Failed to load image"));};
+    img.src=url;
+  });
 }
 
 async function selectAvatar(emoji){
