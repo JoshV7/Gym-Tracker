@@ -557,30 +557,6 @@ select{cursor:pointer;}
     </div>
   </div>
 </div>
-  <div class="md">
-    <h2>Add Athlete</h2>
-    <label>Name</label><input type="text" id="new-name" placeholder="e.g. Alex" maxlength="20">
-    <label>Bench PR (kg)</label><input type="number" id="new-pr" step="0.5" placeholder="e.g. 80">
-    <label>Accent Colour</label>
-    <div id="new-swatches" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"></div>
-    <div class="md-btns">
-      <button class="mb sec" onclick="closeModal('mo-add-athlete')">Cancel</button>
-      <button class="mb pri" onclick="confirmAddAthlete()">Add</button>
-    </div>
-  </div>
-</div>
-
-<div class="mo" id="mo-del-athlete">
-  <div class="md">
-    <h2>Delete Athlete</h2>
-    <p style="font-size:12px;color:var(--mu);margin-bottom:12px" id="del-text"></p>
-    <div id="del-pin-area"></div>
-    <div class="md-btns">
-      <button class="mb sec" onclick="closeModal('mo-del-athlete')">Cancel</button>
-      <button class="mb danger" id="del-btn" onclick="doDeleteAthlete()">Delete</button>
-    </div>
-  </div>
-</div>
 
 <div class="mo" id="mo-pin">
   <div class="md">
