@@ -934,9 +934,14 @@ function showConfirmEmail(email){
 
 async function resendConfirmation(){
   const email=document.getElementById("confirm-email-addr").textContent;
-  if(!email) return;
-  const {error}=await _sb.auth.resend({type:"signup",email});
+  if(!email||email==="your email") return;
   const statusEl=document.getElementById("resend-status");
+  statusEl.textContent="Sending…";statusEl.style.color="var(--mu)";
+  const {error}=await _sb.auth.resend({
+    type:"signup",
+    email,
+    options:{emailRedirectTo:"https://joshv7.github.io/Gym-Tracker/"}
+  });
   if(error){
     statusEl.textContent=error.message;
     statusEl.style.color="var(--red)";
@@ -1136,7 +1141,7 @@ async function sendReset(){
   const email=document.getElementById("reset-email").value.trim();
   if(!email){loginErr("Enter your email.");return;}
   const {error}=await _sb.auth.resetPasswordForEmail(email,{
-    redirectTo:window.location.href
+    redirectTo:"https://joshv7.github.io/Gym-Tracker/"
   });
   if(error) loginErr(error.message);
   else loginErr("Reset link sent — check your email.");
@@ -4516,20 +4521,27 @@ async function doDeleteAccount(){
 
   // Call Edge Function to delete the auth account itself
   const {data:{session}}=await _sb.auth.getSession();
+  let deleted=false;
   try{
-    await fetch(`${SB_URL}/functions/v1/delete-user`,{
+    const res=await fetch(`${SB_URL}/functions/v1/delete-user`,{
       method:"POST",
       headers:{
         "Authorization":"Bearer "+session?.access_token,
         "Content-Type":"application/json"
       }
     });
+    if(res.ok) deleted=true;
+    else console.warn("Edge function returned:",res.status,await res.text());
   }catch(e){
     console.warn("Edge function error:",e);
   }
 
   await _sb.auth.signOut();
-  alert("Account fully deleted.");
+  if(deleted){
+    alert("Account fully deleted.");
+  } else {
+    alert("Your data has been deleted. The auth account may take a moment to be fully removed — contact support if you have issues signing up again with this email.");
+  }
   location.reload();
 }
 
@@ -4713,6 +4725,12 @@ async function bootApp(session){
     try{
       const {error}=await _sb.auth.verifyOtp({token_hash:tokenHash,type});
       if(error) console.warn("Token verify failed:",error.message);
+      // For recovery type, show new password form instead of booting app
+      if(type==="recovery"&&!error){
+        window.history.replaceState(null,"",window.location.pathname);
+        // onAuthStateChange will fire PASSWORD_RECOVERY and call showNewPassword
+        return;
+      }
     }catch(e){
       console.warn("Token verify error:",e.message);
     }
