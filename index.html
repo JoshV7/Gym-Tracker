@@ -4717,6 +4717,16 @@ async function bootApp(session){
 }
 
 // Auth state listener — fires on page load and on sign-in/out
+// Fetch version from DNS TXT record
+(async()=>{
+  try{
+    const res=await fetch('https://dns.google/resolve?name=version.gymtracking.co.uk&type=TXT');
+    const json=await res.json();
+    const ver=json.Answer?.[0]?.data?.replace(/"/g,'');
+    if(ver) document.getElementById('version-tag').textContent=ver;
+  }catch{}
+})();
+
 // Exchange auth codes/tokens for session if present in URL
 (async()=>{
   const params=new URLSearchParams(window.location.search);
@@ -4766,6 +4776,12 @@ _sb.auth.onAuthStateChange((event,session)=>{
   }
 });
 </script>
+<!-- VERSION DISPLAY -->
+<div id="version-tag" style="position:fixed;bottom:16px;left:16px;z-index:500;
+  font-size:10px;color:var(--mu);opacity:.5;pointer-events:none;letter-spacing:.5px">
+  GT
+</div>
+
 <!-- BUG REPORT BUTTON -->
 <button id="bug-btn" onclick="openBugReport()"
   style="position:fixed;bottom:16px;right:16px;z-index:500;
