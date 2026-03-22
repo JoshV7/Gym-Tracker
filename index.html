@@ -15,7 +15,48 @@
   --tx:#f0f0f0;--mu:#555;
   --red:#ff4d00;--pu:#b47cff;--gn:#00ff9d;--or:#ff9d00;--pk:#ff4d8b;--cy:#00e5ff;
 }
-[data-theme=light]{--bg:#f0f0f0;--sf:#fff;--sf2:#e4e4e4;--bd:#ccc;--tx:#111;--mu:#888;}
+[data-theme=light]{
+  --bg:#f5f4f0;
+  --sf:#ffffff;
+  --sf2:#ece9e3;
+  --bd:#d8d4cc;
+  --tx:#1a1a1a;
+  --mu:#6b6560;
+  --ac:#b8a000;
+  --red:#cc2200;
+  --gn:#1a7a3a;
+  --or:#c45000;
+  --cy:#006688;
+  --pu:#6633cc;
+}
+[data-theme=light] .login-screen{background:#f5f4f0;}
+[data-theme=light] .login-box{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid #e0dbd3;}
+[data-theme=light] .login-btn.pri{background:#1a1a1a;color:#fff;}
+[data-theme=light] .login-btn.pri:hover{background:#333;}
+[data-theme=light] .login-btn.sec{background:#ece9e3;color:#1a1a1a;border:1px solid #d8d4cc;}
+[data-theme=light] .chip{border-color:#d8d4cc;color:#1a1a1a;}
+[data-theme=light] .top-bar{background:#fff;border-bottom:1px solid #e0dbd3;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+[data-theme=light] .main-nav{background:#fff;border-bottom:1px solid #e0dbd3;}
+[data-theme=light] .sub-nav{background:#f5f4f0;border-bottom:1px solid #e0dbd3;}
+[data-theme=light] .day-card{background:#fff;border:1px solid #e0dbd3;}
+[data-theme=light] .day-hdr{background:#f5f4f0;}
+[data-theme=light] .feed-card{background:#fff;border:1px solid #e0dbd3;}
+[data-theme=light] .md{background:#fff;border:1px solid #e0dbd3;box-shadow:0 8px 32px rgba(0,0,0,.12);}
+[data-theme=light] .mo{background:rgba(0,0,0,.3);}
+[data-theme=light] input,[data-theme=light] textarea,[data-theme=light] select{background:#fff;border-color:#d8d4cc;color:#1a1a1a;}
+[data-theme=light] input:focus,[data-theme=light] textarea:focus{border-color:#1a1a1a;}
+[data-theme=light] .save-btn{background:#1a1a1a;color:#fff;}
+[data-theme=light] .save-btn:hover{background:#333;}
+[data-theme=light] .hero h1{color:#1a1a1a;}
+[data-theme=light] .hero span{color:var(--ac);}
+[data-theme=light] .sc{background:#fff;border:1px solid #e0dbd3;}
+[data-theme=light] .prog-tmpl{background:#fff;border:1px solid #d8d4cc;}
+[data-theme=light] .prog-tmpl.selected{border-color:#1a1a1a;background:#f0ede6;}
+[data-theme=light] .set-table input{background:#f5f4f0;border-color:#d8d4cc;}
+[data-theme=light] .mtab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+[data-theme=light] .offline-banner{background:rgba(180,80,0,.1);border-color:rgba(180,80,0,.2);}
+[data-theme=light] #bug-btn{background:#fff;border-color:#d8d4cc;}
+[data-theme=light] #version-tag{color:#999;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh;transition:background .3s,color .3s;}
 
@@ -1551,7 +1592,31 @@ async function dbFetch(id){
   ss("spin","syncing…");
   try{
     const rows=await sbReq("workouts","GET",null,`athlete=eq.${encodeURIComponent(id)}&select=data`);
-    db[id]=(rows&&rows.length)?rows[0].data:{};
+    if(rows&&rows.length&&rows[0].data&&Object.keys(rows[0].data).filter(k=>k!=="__ts__"&&k!=="__pin__").length>0){
+      const remote=rows[0].data;
+      const local=db[id]||{};
+      const localTs=local["__ts__"]||{};
+      const remoteTs=remote["__ts__"]||{};
+      // Start with remote as base
+      const merged={...remote};
+      // Local keys newer than remote win
+      for(const k in local){
+        if(k==="__ts__") continue;
+        const lt=localTs[k]||0;
+        const rt=remoteTs[k]||0;
+        if(lt>=rt) merged[k]=local[k]; // local wins on tie too
+      }
+      // Any local key not in remote at all — always keep it
+      for(const k in local){
+        if(k==="__ts__") continue;
+        if(!(k in remote)) merged[k]=local[k];
+      }
+      merged["__ts__"]={...remoteTs,...localTs};
+      db[id]=merged;
+    } else {
+      // Remote empty or missing — keep local, don't wipe it
+      db[id]=db[id]||{};
+    }
     ss("ok","synced");
   }catch(e){
     console.warn("dbFetch failed:",e.message);
@@ -1560,7 +1625,13 @@ async function dbFetch(id){
   }
 }
 
+let _dbReady=false; // prevents premature saves before initial fetch
+
 async function dbSave(id){
+  if(!_dbReady) return;
+  if(!db[id]) return;
+  // Only skip if object is completely empty
+  if(Object.keys(db[id]).length===0) return;
   const payload={id,athlete:id,data:db[id],updated_at:new Date().toISOString()};
   if(!isOnline){queueOp("workouts","POST",payload);ss("ok","queued");return;}
   ss("spin","saving…");
@@ -1641,12 +1712,30 @@ function get(k){return db[currentId]?.[k]??"";}
 function set(k,v){
   if(!db[currentId]) db[currentId]={};
   db[currentId][k]=v;
-  // field-level timestamp
   if(!db[currentId]["__ts__"]) db[currentId]["__ts__"]={};
   db[currentId]["__ts__"][k]=Date.now();
+  try{localStorage.setItem(`gym_${currentId}_${k}`,v);}catch{}
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>dbSave(currentId),1200);
 }
+// setImmediate — saves right away, no debounce. Use for critical fields like targets.
+function setImmediate(k,v){
+  if(!db[currentId]) db[currentId]={};
+  db[currentId][k]=v;
+  if(!db[currentId]["__ts__"]) db[currentId]["__ts__"]={};
+  db[currentId]["__ts__"][k]=Date.now();
+  try{localStorage.setItem(`gym_${currentId}_${k}`,v);}catch{}
+  clearTimeout(saveTimer);
+  dbSave(currentId); // save now, not after delay
+}
+
+// Save immediately when user switches tabs or minimises — prevents data loss
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"&&currentId){
+    clearTimeout(saveTimer);
+    dbSave(currentId);
+  }
+});
 
 function ca(){return athletes.find(a=>a.id===currentId);}
 function accent(){return ca()?.colour||"#e8ff00";}
@@ -2041,9 +2130,15 @@ function renderSubContent(ctx){
 // ══════════════════════════════════════════════════════
 function updateDash(){
   const a=ca();if(!a) return;
-  const tpr=parseFloat(get("target-pr"))||Math.round(a.pr*1.2);
-  const tSquat=parseFloat(get("target-squat"))||Math.round((a.pr_squat||0)*1.2)||0;
-  const tDL=parseFloat(get("target-dl"))||Math.round((a.pr_dl||0)*1.2)||0;
+  const tpr=parseFloat(get("target-pr"))||0;
+  const tSquat=parseFloat(get("target-squat"))||0;
+  const tDL=parseFloat(get("target-dl"))||0;
+
+  // If a target input is currently focused, don't re-render — would wipe user's typing
+  const focusedEl=document.activeElement;
+  if(focusedEl&&(focusedEl.closest&&focusedEl.closest("#page-dash"))&&focusedEl.type==="number"){
+    return;
+  }
   const progs=programs[currentId]||[];
   const primary=progs.find(p=>p.is_primary&&!p.is_archived);
   const privacy=false; // own dashboard always shows your PRs — eye controls others view
@@ -2093,7 +2188,7 @@ function updateDash(){
             style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--ac);
             background:transparent;border:none;border-bottom:1px dashed var(--bd);
             width:80px;padding:0;text-align:left"
-            onchange="set('${tKey}',this.value);updateDash()">
+            onchange="setImmediate('${tKey}',this.value)" oninput="setImmediate('${tKey}',this.value)">
           <span style="font-size:10px;color:var(--mu)">kg target</span>
         </div>
         <div style="font-size:15px;font-weight:700;color:var(--tx)">
@@ -4041,20 +4136,47 @@ async function submitShareLift(){
 async function syncProfile(user){
   const meta=user.user_metadata||{};
   if(!meta.display_name) return;
-  const payload={
-    user_id:user.id,
+  const isGoogle=user.app_metadata?.provider==="google"||
+    (user.app_metadata?.providers||[]).includes("google");
+
+  // Check if profile already exists
+  const {data:existing}=await _sb.from("profiles").select("user_id,avatar_url,avatar_emoji")
+    .eq("user_id",user.id).maybeSingle();
+
+  const base={
     username:meta.display_name,
     colour:meta.colour||PRESETS[0],
     pr_bench:meta.pr||null,
     pr_squat:meta.pr_squat||null,
     pr_dl:meta.pr_dl||null,
     public_stats:isPublicStats(),
-    avatar_emoji:meta.avatar_emoji||"💪",
-    avatar_url:meta.avatar_url||null,
     updated_at:new Date().toISOString()
   };
-  const {error}=await _sb.from("profiles").upsert(payload,{onConflict:"user_id"});
-  if(error) console.warn("syncProfile error:",error.message);
+
+  if(existing){
+    // UPDATE only — never overwrite avatar with Google photo
+    const update={...base};
+    if(!isGoogle){
+      // Only update avatar for non-Google users
+      const isGooglePhoto=meta.avatar_url&&(
+        meta.avatar_url.includes("googleusercontent.com")||meta.avatar_url===meta.picture);
+      if(!isGooglePhoto){
+        update.avatar_emoji=meta.avatar_emoji||null;
+        update.avatar_url=meta.avatar_url||null;
+      }
+    }
+    // For Google users: never touch avatar_url/avatar_emoji — preserve whatever is in the table
+    const {error}=await _sb.from("profiles").update(update).eq("user_id",user.id);
+    if(error) console.warn("syncProfile update error:",error.message);
+  } else {
+    // INSERT new profile
+    const insert={user_id:user.id,...base,
+      avatar_emoji:isGoogle?null:(meta.avatar_emoji||null),
+      avatar_url:isGoogle?null:(meta.avatar_url&&!meta.avatar_url.includes("googleusercontent.com")?meta.avatar_url:null)
+    };
+    const {error}=await _sb.from("profiles").insert(insert);
+    if(error) console.warn("syncProfile insert error:",error.message);
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -4649,6 +4771,19 @@ async function bootApp(session){
   }
 
   // Build single-athlete entry from logged-in user
+  // For Google users: check profiles table for custom avatar_url to avoid Google photo overwriting it
+  let customAvatarUrl=null;
+  let customAvatarEmoji=meta.avatar_emoji||null;
+  // Always check profiles table for avatar — Google OAuth overwrites user_metadata.avatar_url
+  try{
+    const {data:prof}=await _sb.from("profiles").select("avatar_url,avatar_emoji").eq("user_id",user.id).maybeSingle();
+    if(prof?.avatar_url) customAvatarUrl=prof.avatar_url;
+    else if(!isGoogle) customAvatarUrl=meta.avatar_url||null; // email users: fallback to metadata
+    if(prof?.avatar_emoji) customAvatarEmoji=prof.avatar_emoji;
+  }catch{
+    if(!isGoogle) customAvatarUrl=meta.avatar_url||null;
+  }
+
   const userAthlete={
     id:user.id,
     name:meta.display_name||user.email.split("@")[0],
@@ -4658,9 +4793,12 @@ async function bootApp(session){
     height_cm:parseFloat(meta.height_cm)||0,
     weight_kg:parseFloat(meta.weight_kg)||0,
     colour:meta.colour||PRESETS[0],
-    avatar_emoji:meta.avatar_emoji||"💪",
-    avatar_url:meta.avatar_url||null
+    avatar_emoji:customAvatarEmoji||"💪",
+    avatar_url:customAvatarUrl
   };
+  // Keep _cachedMeta avatar_url in sync
+  if(customAvatarUrl) _cachedMeta.avatar_url=customAvatarUrl;
+  if(customAvatarEmoji) _cachedMeta.avatar_emoji=customAvatarEmoji;
   athletes=[userAthlete];
   currentId=user.id;
 
@@ -4672,8 +4810,21 @@ async function bootApp(session){
     db[currentId]["height-m"]=(meta.height_cm/100).toFixed(2);
   }
 
+  // Pre-load all localStorage keys for this user into db BEFORE fetching remote
+  // This ensures local timestamps survive the merge in dbFetch
+  if(!db[currentId]) db[currentId]={};
+  const prefix=`gym_${currentId}_`;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith(prefix)){
+      const field=k.slice(prefix.length);
+      if(!(field in db[currentId])) db[currentId][field]=localStorage.getItem(k);
+    }
+  }
+
   // Load data
   await Promise.all([dbFetch(currentId),bwFetch(currentId),progFetch(currentId)]);
+  _dbReady=true; // now safe to save
 
   // Seed PR tracker with signup values if not already set
   const signupDate=user.created_at?user.created_at.slice(0,10):new Date().toISOString().slice(0,10);
@@ -4689,6 +4840,11 @@ async function bootApp(session){
     set("pr-dl-0",meta.pr_dl);
     set("pr-dl-date-0",signupDate);
   }
+
+  // Seed default targets only if not already saved
+  if(meta.pr&&!get("target-pr")) set("target-pr",Math.round(meta.pr*1.2));
+  if(meta.pr_squat&&!get("target-squat")) set("target-squat",Math.round(meta.pr_squat*1.2));
+  if(meta.pr_dl&&!get("target-dl")) set("target-dl",Math.round(meta.pr_dl*1.2));
 
   // Sync public profile table
   syncProfile(user).catch(()=>{});
