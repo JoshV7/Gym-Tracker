@@ -165,7 +165,17 @@ main{padding:13px;max-width:1000px;margin:0 auto;}
 .sched-i{margin-top:4px;font-size:10px;color:var(--mu);line-height:1.8;}
 
 
-/* DAY CARD */
+/* PLATE CALCULATOR */
+.plate-btn{padding:8px 0;border-radius:6px;border:2px solid var(--bd);
+  background:transparent;color:var(--mu);font-size:13px;font-weight:700;
+  cursor:pointer;transition:.15s;min-width:52px;text-align:center;}
+.plate-btn.on{background:var(--ac);border-color:var(--ac);color:#000;}
+.plate-btn:hover:not(.on){border-color:var(--tx);color:var(--tx);}
+.plate-result{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;align-items:center;min-height:36px;}
+.plate-chip{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;border:3px solid var(--ac);
+  color:var(--ac);background:var(--ac)15;flex-shrink:0;}
+.plate-chip.lg{width:52px;height:52px;font-size:12px;}
 .day-card{background:var(--sf);border-radius:5px;overflow:hidden;margin-bottom:7px;}
 .day-hdr{display:flex;justify-content:space-between;align-items:center;
   padding:9px 14px;background:var(--sf2);cursor:pointer;user-select:none;}
@@ -904,6 +914,7 @@ select{cursor:pointer;}
   <div class="mtab" onclick="showMain('pr',event)">PR Tracker</div>
   <div class="mtab" onclick="showMain('feed',event)">Recent Lifts</div>
   <div class="mtab" onclick="showMain('friends',event)">Friends</div>
+  <div class="mtab" onclick="showMain('plates',event)">Plates</div>
 </div>
 
 <!-- SUB NAV (context-sensitive) -->
@@ -918,6 +929,7 @@ select{cursor:pointer;}
   <div id="page-pr" class="page"></div>
   <div id="page-feed" class="page"></div>
   <div id="page-friends" class="page"></div>
+  <div id="page-plates" class="page"></div>
 </main>
 
 <script>
@@ -2151,6 +2163,9 @@ function showMain(id,evt){
   } else if(id==="friends"){
     document.getElementById("page-friends").classList.add("active");
     buildFriends();
+  } else if(id==="plates"){
+    document.getElementById("page-plates").classList.add("active");
+    buildPlates();
   }
 }
 
@@ -3924,6 +3939,145 @@ function timeAgo(iso){
   const days=Math.floor(hrs/24);
   if(days<7) return days+"d ago";
   return new Date(iso).toLocaleDateString();
+}
+
+// ══════════════════════════════════════════════════════
+//  PLATE CALCULATOR
+// ══════════════════════════════════════════════════════
+const ALL_PLATES=[50,25,20,15,10,5,2.5,1.25,0.5,0.25];
+let _plateState={
+  barWeight:20,
+  targetWeight:100,
+  available:new Set([25,20,15,10,5,2.5,1.25])
+};
+
+function buildPlates(){
+  const p=_plateState;
+  const container=document.getElementById("page-plates");
+  container.innerHTML=`
+  <div class="hero" style="padding-top:12px">
+    <h1 style="font-size:clamp(26px,5vw,44px)">PLATE<br><span>CALCULATOR</span></h1>
+  </div>
+
+  <div style="background:var(--sf);border-radius:5px;padding:14px;margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="login-field" style="margin:0">
+        <label>Bar / Machine (kg)</label>
+        <input type="number" id="plate-bar" value="${p.barWeight}" step="0.5" min="0"
+          oninput="_plateState.barWeight=parseFloat(this.value)||0;renderPlateResult()">
+      </div>
+      <div class="login-field" style="margin:0">
+        <label>Target Weight (kg)</label>
+        <input type="number" id="plate-target" value="${p.targetWeight}" step="0.5" min="0"
+          oninput="_plateState.targetWeight=parseFloat(this.value)||0;renderPlateResult()">
+      </div>
+    </div>
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:8px">
+      Available Plates (kg each side)
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:4px">
+      ${ALL_PLATES.map(w=>`
+        <button class="plate-btn${p.available.has(w)?" on":""}"
+          onclick="togglePlate(${w})">${w}</button>`).join("")}
+    </div>
+  </div>
+
+  <div style="background:var(--sf);border-radius:5px;padding:14px">
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:10px">
+      Each Side
+    </div>
+    <div id="plate-result"></div>
+    <div id="plate-summary" style="margin-top:12px;font-size:12px;color:var(--mu);line-height:1.8"></div>
+  </div>`;
+
+  renderPlateResult();
+}
+
+function togglePlate(w){
+  if(_plateState.available.has(w)) _plateState.available.delete(w);
+  else _plateState.available.add(w);
+  document.querySelectorAll(".plate-btn").forEach(btn=>{
+    const val=parseFloat(btn.textContent);
+    btn.classList.toggle("on",_plateState.available.has(val));
+  });
+  renderPlateResult();
+}
+
+function calcPlates(barWeight,targetWeight,available){
+  const perSide=(targetWeight-barWeight)/2;
+  if(perSide<0) return null;
+  if(perSide<0.001) return [];
+  const plates=available.slice().sort((a,b)=>b-a);
+  const result=[];
+  let remaining=perSide;
+  for(const plate of plates){
+    while(remaining>=plate-0.001){
+      result.push(plate);
+      remaining=Math.round((remaining-plate)*1000)/1000;
+    }
+  }
+  if(remaining>0.01) return null;
+  return result;
+}
+
+function renderPlateResult(){
+  const p=_plateState;
+  const resultEl=document.getElementById("plate-result");
+  const summaryEl=document.getElementById("plate-summary");
+  if(!resultEl) return;
+  const perSide=(p.targetWeight-p.barWeight)/2;
+  if(p.targetWeight<=0){
+    resultEl.innerHTML=`<p style="color:var(--mu);font-size:12px">Enter a target weight.</p>`;
+    summaryEl.textContent="";return;
+  }
+  if(p.targetWeight<p.barWeight){
+    resultEl.innerHTML=`<p style="color:var(--red);font-size:12px">Target is less than bar weight.</p>`;
+    summaryEl.textContent="";return;
+  }
+  if(perSide<0.001){
+    resultEl.innerHTML=`<p style="color:var(--mu);font-size:12px">No plates needed — just the bar.</p>`;
+    summaryEl.textContent="";return;
+  }
+  const available=[...p.available].sort((a,b)=>b-a);
+  const plates=calcPlates(p.barWeight,p.targetWeight,available);
+  if(!plates){
+    // Find closest achievable
+    let bestPlates=[];
+    let bestWeight=p.barWeight;
+    function tryCombo(idx,rem,acc){
+      const achieved=p.barWeight+(perSide-rem)*2;
+      if(achieved>bestWeight){bestWeight=achieved;bestPlates=[...acc];}
+      if(idx>=available.length||rem<0.001) return;
+      const pl=available[idx];
+      if(rem>=pl-0.001) tryCombo(idx,Math.round((rem-pl)*1000)/1000,[...acc,pl]);
+      tryCombo(idx+1,rem,acc);
+    }
+    tryCombo(0,perSide,[]);
+    resultEl.innerHTML=`<p style="color:var(--or);font-size:12px">
+      Can't make exactly ${p.targetWeight}kg.<br>
+      Closest: <strong style="color:var(--ac)">${bestWeight}kg</strong>
+      ${bestPlates.length?`— ${bestPlates.join(" + ")} each side`:""}
+    </p>`;
+    summaryEl.textContent="";return;
+  }
+  if(!plates.length){
+    resultEl.innerHTML=`<p style="color:var(--mu);font-size:12px">No plates needed.</p>`;
+    summaryEl.textContent="";return;
+  }
+  // Render plates as visual circles
+  const html=plates.map(w=>{
+    const size=w>=20?52:w>=10?44:38;
+    const fs=w>=20?12:w>=10?11:10;
+    return `<div class="plate-chip" style="width:${size}px;height:${size}px;font-size:${fs}px"
+      title="${w}kg">${w}</div>`;
+  }).join("");
+  resultEl.innerHTML=`<div class="plate-result">${html}</div>`;
+  summaryEl.innerHTML=`
+    <div><span style="color:var(--ac);font-weight:700;font-size:15px">${p.targetWeight}kg</span></div>
+    <div>${p.barWeight}kg bar &nbsp;+&nbsp; <strong>${plates.join(" + ")}</strong> each side</div>
+    <div style="color:var(--mu)">${plates.length} plate${plates.length!==1?"s":""} per side
+    &nbsp;·&nbsp; ${(plates.reduce((a,b)=>a+b,0)*2).toFixed(2).replace(/\.?0+$/,"")}kg in plates total</div>
+  `;
 }
 
 async function buildFeed(){
