@@ -83,6 +83,7 @@
 [data-theme=light] #copyright-tag{color:rgba(0,0,0,0.2);text-shadow:none;}
 [data-theme=light] #version-tag,
 [data-theme=light] #copyright-tag{text-shadow:none!important;}
+[data-theme=light] #login-version-tag{color:rgba(0,0,0,0.25)!important;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh;transition:background .3s,color .3s;}
 
@@ -585,6 +586,13 @@ select{cursor:pointer;}
       <p id="resend-status" style="font-size:11px;color:var(--gn);min-height:16px;margin-top:6px"></p>
     </div>
   </div>
+  <!-- Version and copyright inside login screen -->
+  <div style="position:absolute;bottom:16px;left:16px;font-size:10px;
+    color:rgba(255,255,255,0.35);pointer-events:none;letter-spacing:.5px"
+    id="login-version-tag">GT</div>
+  <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    font-size:10px;color:rgba(255,255,255,0.25);pointer-events:none;
+    letter-spacing:.5px;white-space:nowrap">© 2026 Gym Tracker</div>
 </div>
 
 <!-- APP (hidden until logged in) -->
@@ -4862,9 +4870,9 @@ async function bootApp(session){
     set("pr-squat-0",meta.pr_squat);
     set("pr-squat-date-0",signupDate);
   }
-  if(meta.pr_dl&&!get("pr-dl-0")){
-    set("pr-dl-0",meta.pr_dl);
-    set("pr-dl-date-0",signupDate);
+  if(meta.pr_dl&&!get("pr-deadlift-0")){
+    set("pr-deadlift-0",meta.pr_dl);
+    set("pr-deadlift-date-0",signupDate);
   }
 
   // Seed default targets only if not already saved
@@ -4905,7 +4913,11 @@ async function bootApp(session){
     const res=await fetch('https://dns.google/resolve?name=version.gymtracking.co.uk&type=TXT');
     const json=await res.json();
     const ver=json.Answer?.[0]?.data?.replace(/"/g,'');
-    if(ver) document.getElementById('version-tag').textContent=ver;
+  if(ver){
+    document.getElementById('version-tag').textContent=ver;
+    const lt=document.getElementById('login-version-tag');
+    if(lt) lt.textContent=ver;
+  }
   }catch{}
 })();
 
