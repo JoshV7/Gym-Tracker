@@ -4377,36 +4377,49 @@ async function openLinkAccounts(){
   const identities=user.identities||[];
   const hasEmail=identities.some(i=>i.provider==="email");
   const hasGoogle=identities.some(i=>i.provider==="google");
+  const emailVerified=user.email_confirmed_at||user.confirmed_at;
 
   let html="";
 
   // Email/password
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)">
-    <div>
-      <div style="font-size:13px;font-weight:600">✉️ Email / Password</div>
-      <div style="font-size:11px;color:var(--mu)">${hasEmail?(user.email||"linked"):"Not linked"}</div>
+  html+=`<div style="padding:10px 0;border-bottom:1px solid var(--bd)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasEmail?6:0}px">
+      <div>
+        <div style="font-size:13px;font-weight:600">✉️ Email / Password</div>
+        <div style="font-size:11px;color:var(--mu)">${hasEmail?(user.email||"linked"):"Not linked"}</div>
+      </div>
+      ${hasEmail
+        ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED ✓</span>`
+        :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
+            onclick="linkEmail()">Link</button>`}
     </div>
-    ${hasEmail
-      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
-      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
-          onclick="linkEmail()">Link</button>`}
+    ${hasEmail?`
+    <button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+      onclick="openChangeEmail()">Change Email</button>`:``}
   </div>`;
 
   // Google
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
-    <div>
-      <div style="font-size:13px;font-weight:600">🔵 Google</div>
-      <div style="font-size:11px;color:var(--mu)">${hasGoogle?"Linked":"Not linked"}</div>
+  html+=`<div style="padding:10px 0;border-bottom:1px solid var(--bd)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasGoogle&&hasEmail&&emailVerified?6:0}px">
+      <div>
+        <div style="font-size:13px;font-weight:600">🔵 Google</div>
+        <div style="font-size:11px;color:var(--mu)">${hasGoogle?"Linked":"Not linked"}</div>
+      </div>
+      ${hasGoogle
+        ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED ✓</span>`
+        :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
+            onclick="linkGoogle()">Link</button>`}
     </div>
-    ${hasGoogle
-      ?`<span style="font-size:10px;color:var(--gn);letter-spacing:1px">LINKED</span>`
-      :`<button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px"
-          onclick="linkGoogle()">Link</button>`}
+    ${hasGoogle&&hasEmail&&emailVerified?`
+    <button class="save-btn" style="margin:0;padding:5px 10px;font-size:9px;background:var(--red)"
+      onclick="unlinkGoogle()">Unlink Google</button>
+    <p style="font-size:10px;color:var(--mu);margin-top:4px">You'll still be able to sign in with your email and password.</p>
+    `:`${hasGoogle&&!hasEmail?`<p style="font-size:10px;color:var(--mu);margin-top:6px">Link an email/password first before unlinking Google.</p>`:""}` }
   </div>`;
 
-  // Data priority section — only if multiple identities
+  // Data priority — only if multiple identities
   if(identities.length>1){
-    html+=`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)">
+    html+=`<div style="margin-top:12px">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--ac);margin-bottom:6px">Data Priority</div>
       <p style="font-size:11px;color:var(--mu);margin-bottom:8px">
         If you had data under a different sign-in method before linking, choose which data to keep.
@@ -4434,6 +4447,26 @@ async function linkEmail(){
   const {error}=await _sb.auth.linkIdentity({provider:"email",email,password});
   if(error) alert(error.message);
   else{alert("Email linked!");openLinkAccounts();}
+}
+
+async function openChangeEmail(){
+  closeModal("mo-link");
+  const newEmail=prompt("Enter your new email address:");
+  if(!newEmail||!newEmail.includes("@")){alert("Invalid email.");return;}
+  const {error}=await _sb.auth.updateUser({email:newEmail});
+  if(error){alert(error.message);return;}
+  alert("Confirmation sent to "+newEmail+" — click the link to confirm the change. You may also need to confirm from your old email address.");
+}
+
+async function unlinkGoogle(){
+  if(!confirm("Unlink Google? You'll sign in with email and password only.")) return;
+  const {data:{user}}=await _sb.auth.getUser();
+  const googleIdentity=user.identities?.find(i=>i.provider==="google");
+  if(!googleIdentity){alert("Google not linked.");return;}
+  const {error}=await _sb.auth.unlinkIdentity(googleIdentity);
+  if(error){alert(error.message);return;}
+  alert("Google unlinked. Sign in with your email and password.");
+  openLinkAccounts();
 }
 
 async function linkGoogle(){
