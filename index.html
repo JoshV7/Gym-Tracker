@@ -5497,11 +5497,13 @@ _sb.auth.onAuthStateChange((event,session)=>{
     const ceRaw=localStorage.getItem("ce_state_pending")||
       Object.keys(localStorage).filter(k=>k.startsWith("ce_state_")&&k!=="ce_state_pending")
         .map(k=>localStorage.getItem(k)).find(Boolean);
+    console.log("USER_UPDATED fired, ceRaw:",ceRaw);
     if(ceRaw){
       const state=JSON.parse(ceRaw);
       if(state.step==="new"||state.step==="old"){
         const nextStep=state.step==="new"?"old":"done";
         const newState={...state,step:nextStep};
+        console.log("Advancing CE step to:",nextStep);
         localStorage.setItem("ce_state_pending",JSON.stringify(newState));
         const uid=session.user?.id;
         if(uid) localStorage.setItem("ce_state_"+uid,JSON.stringify(newState));
