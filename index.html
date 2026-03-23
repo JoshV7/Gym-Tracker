@@ -694,6 +694,9 @@ select{cursor:pointer;}
   <div class="md" style="max-width:400px;width:min(400px,95vw)">
     <h2>Change Email</h2>
 
+    <!-- Hidden Turnstile for OTP captcha verification -->
+    <div id="ce-turnstile" style="margin-bottom:8px;display:flex;justify-content:center"></div>
+
     <!-- STEP 1: Enter new email -->
     <div id="ce-input">
       <p style="font-size:12px;color:var(--mu);margin-bottom:12px">
@@ -1038,7 +1041,7 @@ function showSignUp(){
   container.innerHTML="";
   if(window.turnstile){
     _turnstileWidgetId=window.turnstile.render(container,{
-      sitekey:"0x4AAAAAACusj9lhRasD3LeL",
+      sitekey:"2x00000000000000000000AB",
       theme:"dark",
       size:"normal"
     });
@@ -4560,14 +4563,24 @@ function _ceLoad(){
   return raw?JSON.parse(raw):null;
 }
 
+let _ceTurnstileId=null;
 function openChangeEmail(){
   closeModal("mo-link");
-  _ceClear(); // always start fresh
+  _ceClear();
   document.getElementById("ce-input").style.display="";
   document.getElementById("ce-verify").style.display="none";
   document.getElementById("ce-done-screen").style.display="none";
   document.getElementById("ce-new-email").value="";
   document.getElementById("ce-err").textContent="";
+  // Render Turnstile
+  const ct=document.getElementById("ce-turnstile");
+  ct.innerHTML="";
+  if(window.turnstile){
+    _ceTurnstileId=window.turnstile.render(ct,{
+      sitekey:"2x00000000000000000000AB",
+      theme:"dark",size:"normal"
+    });
+  }
   openModal("mo-change-email");
 }
 
@@ -4588,13 +4601,20 @@ async function ceSubmit(){
   }
   btn.disabled=true;btn.textContent="Sending…";
 
+  // Get captcha token
+  const captchaToken=window.turnstile&&_ceTurnstileId!==null
+    ?window.turnstile.getResponse(_ceTurnstileId)||""
+    :"";
+
   // Send OTP to CURRENT (old) email — verifies they still control it
   const {error}=await _sb.auth.signInWithOtp({
-    email:currentEmail
+    email:currentEmail,
+    options:{captchaToken:captchaToken||undefined}
   });
   btn.disabled=false;btn.textContent="Send Code";
-  if(error&&error.message.toLowerCase().includes("rate")){
-    errEl.textContent=error.message;return;
+  if(error){
+    if(window.turnstile&&_ceTurnstileId!==null) window.turnstile.reset(_ceTurnstileId);
+    if(error.message.toLowerCase().includes("rate")){errEl.textContent=error.message;return;}
   }
 
   // Store the intended new email
