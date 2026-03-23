@@ -687,11 +687,12 @@ select{cursor:pointer;}
 </div>
 
 <!-- CHANGE EMAIL MODAL -->
+<!-- CHANGE EMAIL MODAL -->
 <div class="mo" id="mo-change-email" style="z-index:20000">
-  <div class="md" style="max-width:420px;width:min(420px,95vw)">
+  <div class="md" style="max-width:400px;width:min(400px,95vw)">
     <h2>Change Email</h2>
 
-    <!-- INPUT SCREEN -->
+    <!-- STEP 0: Enter new email -->
     <div id="ce-input">
       <div class="login-field">
         <label>New Email Address</label>
@@ -701,22 +702,33 @@ select{cursor:pointer;}
       <p id="ce-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:8px"></p>
       <div class="md-btns">
         <button class="mb sec" onclick="ceCancel()">Cancel</button>
-        <button class="mb pri" id="ce-send-btn" onclick="ceSubmit()">Send Confirmation</button>
+        <button class="mb pri" id="ce-send-btn" onclick="ceSubmit()">Send Code</button>
       </div>
     </div>
 
-    <!-- PROGRESS SCREEN -->
+    <!-- PROGRESS: 3 steps with code inputs -->
     <div id="ce-progress" style="display:none">
-      <p id="ce-prog-sub" style="font-size:12px;color:var(--mu);margin-bottom:16px;text-align:center"></p>
+      <p id="ce-prog-sub" style="font-size:11px;color:var(--mu);margin-bottom:14px;text-align:center"></p>
 
-      <div class="ce-row" id="ce-row-1">
+      <!-- Row 1: new email -->
+      <div class="ce-row active" id="ce-row-1">
         <div class="ce-icon" id="ce-ico-1">⏳</div>
         <div class="ce-text">
           <div class="ce-title" id="ce-ttl-1">Confirm new email</div>
-          <div class="ce-sub" id="ce-sub-1">Check your new inbox and click the link</div>
+          <div class="ce-sub" id="ce-sub-1"></div>
         </div>
       </div>
+      <div id="ce-code-1-wrap" style="margin:-4px 0 10px 40px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" inputmode="numeric" id="ce-code-1" placeholder="000000"
+            style="width:110px;letter-spacing:6px;font-size:18px;text-align:center;padding:8px;font-weight:700"
+            maxlength="6">
+          <button class="save-btn" style="margin:0;padding:8px 14px" onclick="ceVerify(1)">Verify</button>
+        </div>
+        <p id="ce-code-1-err" style="color:var(--red);font-size:11px;margin-top:4px;min-height:14px"></p>
+      </div>
 
+      <!-- Row 2: old email -->
       <div class="ce-row" id="ce-row-2" style="opacity:.35">
         <div class="ce-icon" id="ce-ico-2">🔒</div>
         <div class="ce-text">
@@ -724,84 +736,32 @@ select{cursor:pointer;}
           <div class="ce-sub" id="ce-sub-2">Available after step 1</div>
         </div>
       </div>
+      <div id="ce-code-2-wrap" style="margin:-4px 0 10px 40px;display:none">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" inputmode="numeric" id="ce-code-2" placeholder="000000"
+            style="width:110px;letter-spacing:6px;font-size:18px;text-align:center;padding:8px;font-weight:700"
+            maxlength="6">
+          <button class="save-btn" style="margin:0;padding:8px 14px" onclick="ceVerify(2)">Verify</button>
+        </div>
+        <p id="ce-code-2-err" style="color:var(--red);font-size:11px;margin-top:4px;min-height:14px"></p>
+      </div>
 
+      <!-- Row 3: done -->
       <div class="ce-row" id="ce-row-3" style="opacity:.35">
         <div class="ce-icon" id="ce-ico-3">🔒</div>
         <div class="ce-text">
-          <div class="ce-title" id="ce-ttl-3">Email changed</div>
+          <div class="ce-title">Email changed</div>
           <div class="ce-sub" id="ce-sub-3">Available after step 2</div>
         </div>
       </div>
 
       <div class="md-btns" style="margin-top:16px">
-        <button class="mb sec" onclick="ceCancel()">Cancel Change</button>
+        <button class="mb sec" onclick="ceCancel()">Cancel</button>
         <button class="mb pri" id="ce-done-btn" disabled onclick="ceDone()">Done</button>
       </div>
     </div>
   </div>
 </div>
-
-<div class="mo" id="mo-change-email">
-  <div class="md" style="max-width:420px;width:min(420px,95vw)">
-    <h2>Change Email</h2>
-
-    <!-- Input screen (before submitting) -->
-    <div id="ce-screen-input">
-      <div class="login-field">
-        <label>New Email Address</label>
-        <input type="email" id="ce-new-email" placeholder="new@example.com" style="text-align:left"
-          onkeydown="if(event.key==='Enter') submitChangeEmail()">
-      </div>
-      <p id="ce-input-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:8px"></p>
-      <div class="md-btns">
-        <button class="mb sec" onclick="closeModal('mo-change-email')">Cancel</button>
-        <button class="mb pri" onclick="submitChangeEmail()">Send Confirmation</button>
-      </div>
-    </div>
-
-    <!-- Progress screen (after submitting) -->
-    <div id="ce-screen-progress" style="display:none">
-      <p id="ce-prog-subtitle" style="font-size:12px;color:var(--mu);margin-bottom:16px"></p>
-
-      <!-- Step 1: Confirm new email -->
-      <div id="ce-step-1" style="display:flex;align-items:center;gap:12px;padding:12px;
-        border-radius:5px;border:1px solid var(--bd);margin-bottom:8px">
-        <div id="ce-icon-1" style="font-size:20px;width:28px;text-align:center;flex-shrink:0">⏳</div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600" id="ce-label-1">Confirm new email</div>
-          <div style="font-size:11px;color:var(--mu)" id="ce-sub-1">Check your inbox and click the link</div>
-        </div>
-      </div>
-
-      <!-- Step 2: Confirm old email -->
-      <div id="ce-step-2" style="display:flex;align-items:center;gap:12px;padding:12px;
-        border-radius:5px;border:1px solid var(--bd);margin-bottom:8px;opacity:.4">
-        <div id="ce-icon-2" style="font-size:20px;width:28px;text-align:center;flex-shrink:0">🔒</div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600" id="ce-label-2">Confirm old email</div>
-          <div style="font-size:11px;color:var(--mu)" id="ce-sub-2">Available after step 1</div>
-        </div>
-      </div>
-
-      <!-- Step 3: Confirm change -->
-      <div id="ce-step-3" style="display:flex;align-items:center;gap:12px;padding:12px;
-        border-radius:5px;border:1px solid var(--bd);margin-bottom:16px;opacity:.4">
-        <div id="ce-icon-3" style="font-size:20px;width:28px;text-align:center;flex-shrink:0">🔒</div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600">Email changed</div>
-          <div style="font-size:11px;color:var(--mu)" id="ce-sub-3">Available after step 2</div>
-        </div>
-      </div>
-
-      <div class="md-btns">
-        <button class="mb sec" onclick="cancelEmailChange()">Cancel</button>
-        <button class="mb pri" id="ce-confirm-btn" disabled onclick="ceDone()">Done</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CHANGE EMAIL MODAL -->
 
 <!-- MERGE DATA MODAL -->
 <div class="mo" id="mo-merge">
@@ -4577,47 +4537,52 @@ async function linkEmail(){
 }
 
 // ── CE helpers ──────────────────────────────────────────
-function _ceKey(){return "ce_state_"+(currentId||"pending");}
+// ══════════════════════════════════════════════════════
+//  CHANGE EMAIL — 6-digit OTP flow
+// ══════════════════════════════════════════════════════
+// State: {step:"new"|"old"|"done", newEmail, oldEmail}
+// step "new"  = waiting for new email OTP
+// step "old"  = new confirmed, waiting for old email OTP
+// step "done" = both confirmed, email changed
+
 function _ceSave(state){
-  localStorage.setItem("ce_state_pending",JSON.stringify(state));
-  if(currentId) localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
-  if(currentId) _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  localStorage.setItem("ce_state_"+currentId, JSON.stringify(state));
+  _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
 }
 function _ceClear(){
-  localStorage.removeItem("ce_state_pending");
-  if(currentId){
-    localStorage.removeItem("ce_state_"+currentId);
-    _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
-  }
+  localStorage.removeItem("ce_state_"+currentId);
+  _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
 }
 function _ceLoad(){
-  const raw=localStorage.getItem("ce_state_"+currentId)||localStorage.getItem("ce_state_pending");
+  const raw=localStorage.getItem("ce_state_"+currentId);
   return raw?JSON.parse(raw):null;
 }
 
 function _ceRender(state){
-  const step=state.step; // "new" | "old" | "done"
-  const s1done=step==="old"||step==="done";
-  const s2done=step==="done";
-  const s2active=step==="old";
+  const s1done=state.step==="old"||state.step==="done";
+  const s2done=state.step==="done";
+  const s2active=state.step==="old";
 
   document.getElementById("ce-prog-sub").textContent=`Changing to: ${state.newEmail}`;
 
   // Row 1
   document.getElementById("ce-ico-1").textContent=s1done?"✅":"⏳";
   document.getElementById("ce-ttl-1").textContent=s1done?"New email confirmed":"Confirm new email";
-  document.getElementById("ce-sub-1").textContent=s1done
-    ?state.newEmail:`Check ${state.newEmail} and click the link`;
+  document.getElementById("ce-sub-1").textContent=s1done?state.newEmail:`Code sent to ${state.newEmail}`;
   document.getElementById("ce-row-1").className="ce-row"+(s1done?" done":" active");
   document.getElementById("ce-row-1").style.opacity="1";
+  document.getElementById("ce-code-1-wrap").style.display=s1done?"none":"";
+  document.getElementById("ce-code-1").value="";
+  document.getElementById("ce-code-1-err").textContent="";
 
   // Row 2
   document.getElementById("ce-ico-2").textContent=s2done?"✅":s2active?"⏳":"🔒";
   document.getElementById("ce-ttl-2").textContent=s2done?"Old email confirmed":"Confirm old email";
-  document.getElementById("ce-sub-2").textContent=s2done
-    ?state.oldEmail:s2active?`Check ${state.oldEmail} and click the link`:"Available after step 1";
+  document.getElementById("ce-sub-2").textContent=s2done?state.oldEmail:s2active?`Code sent to ${state.oldEmail}`:"Available after step 1";
   document.getElementById("ce-row-2").className="ce-row"+(s2done?" done":s2active?" active":"");
   document.getElementById("ce-row-2").style.opacity=s1done?"1":"0.35";
+  document.getElementById("ce-code-2-wrap").style.display=s2active?"":"none";
+  if(s2active){document.getElementById("ce-code-2").value="";document.getElementById("ce-code-2-err").textContent="";}
 
   // Row 3
   document.getElementById("ce-ico-3").textContent=s2done?"✅":"🔒";
@@ -4632,7 +4597,6 @@ function _ceRender(state){
 }
 
 function ceOpen(state){
-  // Show progress screen
   document.getElementById("ce-input").style.display="none";
   document.getElementById("ce-progress").style.display="";
   _ceRender(state);
@@ -4642,9 +4606,10 @@ function ceOpen(state){
 function openChangeEmail(){
   closeModal("mo-link");
   const state=_ceLoad();
-  if(state){
+  if(state&&state.step!=="done"){
     ceOpen(state);
   } else {
+    _ceClear();
     document.getElementById("ce-input").style.display="";
     document.getElementById("ce-progress").style.display="none";
     document.getElementById("ce-new-email").value="";
@@ -4653,12 +4618,11 @@ function openChangeEmail(){
   }
 }
 
-// Called from bootApp when redirected back from email link
 function ceCheckOnBoot(){
   const state=_ceLoad();
-  if(!state) return;
-  // Force the modal open — nothing else usable until done or cancelled
-  ceOpen(state);
+  if(!state||state.step==="done") return;
+  // Pending change — reopen modal (blocks app)
+  setTimeout(()=>ceOpen(state),300);
 }
 
 async function ceSubmit(){
@@ -4669,19 +4633,72 @@ async function ceSubmit(){
   const btn=document.getElementById("ce-send-btn");
   errEl.textContent="";
   if(!newEmail||!newEmail.includes("@")){errEl.textContent="Enter a valid email.";return;}
-  if(newEmail.toLowerCase()===currentEmail.toLowerCase()){
-    errEl.textContent="That's already your current email.";return;
-  }
+  if(newEmail.toLowerCase()===currentEmail.toLowerCase()){errEl.textContent="That's already your current email.";return;}
+
   btn.disabled=true;btn.textContent="Sending…";
-  const {error}=await _sb.auth.updateUser({
+  // Send OTP to new email using signInWithOtp (shouldCreateUser:false)
+  const {error}=await _sb.auth.signInWithOtp({
     email:newEmail,
-    options:{emailRedirectTo:"https://gymtracking.co.uk"}
+    options:{shouldCreateUser:false,emailRedirectTo:"https://gymtracking.co.uk"}
   });
-  btn.disabled=false;btn.textContent="Send Confirmation";
-  if(error){errEl.textContent=error.message;return;}
+  btn.disabled=false;btn.textContent="Send Code";
+  if(error&&!error.message.toLowerCase().includes("not found")){
+    // If email not found, still proceed (don't reveal existence)
+  }
+  if(error&&error.message.toLowerCase().includes("rate")){errEl.textContent=error.message;return;}
+
   const state={step:"new",newEmail,oldEmail:currentEmail};
   _ceSave(state);
   ceOpen(state);
+}
+
+async function ceVerify(step){
+  const state=_ceLoad();
+  if(!state) return;
+  const codeEl=document.getElementById(`ce-code-${step}`);
+  const errEl=document.getElementById(`ce-code-${step}-err`);
+  const btn=codeEl.nextElementSibling;
+  const code=codeEl.value.trim();
+  errEl.textContent="";
+  if(code.length!==6||!/^\d{6}$/.test(code)){errEl.textContent="Enter the 6-digit code.";return;}
+  btn.disabled=true;btn.textContent="Checking…";
+
+  const email=step===1?state.newEmail:state.oldEmail;
+
+  if(step===1){
+    // Verify new email OTP
+    const {error}=await _sb.auth.verifyOtp({email,token:code,type:"email"});
+    btn.disabled=false;btn.textContent="Verify";
+    if(error){errEl.textContent=error.message;return;}
+
+    // Initiate the actual email change on Supabase
+    const {error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
+    if(updateErr&&!updateErr.message.toLowerCase().includes("already")){
+      errEl.textContent=updateErr.message;return;
+    }
+
+    // Send OTP to old email for second confirmation
+    await _sb.auth.signInWithOtp({email:state.oldEmail,options:{shouldCreateUser:false}});
+
+    const newState={...state,step:"old"};
+    _ceSave(newState);
+    _ceRender(newState);
+
+  } else {
+    // Verify old email OTP — this completes the email change
+    const {error}=await _sb.auth.verifyOtp({email,token:code,type:"email"});
+    btn.disabled=false;btn.textContent="Verify";
+    if(error){errEl.textContent=error.message;return;}
+
+    const newState={...state,step:"done"};
+    _ceSave(newState);
+    _ceRender(newState);
+
+    // Update the UI to reflect new email
+    const a=ca();
+    if(a) a.name=a.name; // trigger re-render
+    updateDash();
+  }
 }
 
 function ceDone(){
@@ -4692,7 +4709,6 @@ function ceDone(){
 function ceCancel(){
   _ceClear();
   closeModal("mo-change-email");
-  // If they had a pending change in Supabase, inform them it won't complete
 }
 
 // Legacy aliases
@@ -5485,7 +5501,6 @@ async function bootApp(session){
 })();
 
 _sb.auth.onAuthStateChange((event,session)=>{
-  console.log("🔐 Auth event:",event, session?.user?.email);
   if(event==="PASSWORD_RECOVERY"){
     // User clicked reset link — show new password form
     document.getElementById("login-screen").style.display="flex";
@@ -5498,13 +5513,11 @@ _sb.auth.onAuthStateChange((event,session)=>{
     const ceRaw=localStorage.getItem("ce_state_pending")||
       Object.keys(localStorage).filter(k=>k.startsWith("ce_state_")&&k!=="ce_state_pending")
         .map(k=>localStorage.getItem(k)).find(Boolean);
-    console.log("USER_UPDATED fired, ceRaw:",ceRaw);
     if(ceRaw){
       const state=JSON.parse(ceRaw);
       if(state.step==="new"||state.step==="old"){
         const nextStep=state.step==="new"?"old":"done";
         const newState={...state,step:nextStep};
-        console.log("Advancing CE step to:",nextStep);
         localStorage.setItem("ce_state_pending",JSON.stringify(newState));
         const uid=session.user?.id;
         if(uid) localStorage.setItem("ce_state_"+uid,JSON.stringify(newState));
