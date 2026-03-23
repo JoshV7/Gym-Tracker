@@ -4551,7 +4551,9 @@ async function submitChangeEmail(){
   });
   if(error){errEl.textContent=error.message;return;}
   const state={step:"new",newEmail,oldEmail:currentEmail};
-  localStorage.setItem("ce_state_"+(currentId||"pending"),JSON.stringify(state));
+  // Save with both keys so it's found regardless of when page reloads
+  localStorage.setItem("ce_state_pending",JSON.stringify(state));
+  if(currentId) localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
   showCEScreen(state);
 }
 
@@ -5343,14 +5345,15 @@ async function bootApp(session){
       }
       if((type==="email_change"||type==="email_change_current"||type==="email_change_new")&&!error){
         window.history.replaceState(null,"",window.location.pathname);
-        const ceState=localStorage.getItem("ce_state_"+currentId);
-        const state=ceState?JSON.parse(ceState):{};
+        // Read existing state — try user-specific first, then pending
+        const ceRaw=localStorage.getItem("ce_state_pending")||
+          Object.keys(localStorage).filter(k=>k.startsWith("ce_state_")&&k!=="ce_state_pending")
+            .map(k=>localStorage.getItem(k))[0];
+        const state=ceRaw?JSON.parse(ceRaw):{};
         if(type==="email_change_new"){
-          // New email confirmed — advance to waiting for old email
           localStorage.setItem("ce_state_pending",JSON.stringify({...state,step:"old"}));
           localStorage.setItem("show_email_changed","new_confirmed");
         } else {
-          // Old email confirmed — done
           localStorage.setItem("ce_state_pending",JSON.stringify({...state,step:"done"}));
           localStorage.setItem("show_email_changed","done");
         }
