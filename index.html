@@ -676,6 +676,60 @@ select{cursor:pointer;}
   </div>
 </div>
 
+<!-- CHANGE EMAIL MODAL -->
+<div class="mo" id="mo-change-email">
+  <div class="md" style="max-width:420px;width:min(420px,95vw)">
+    <h2>Change Email</h2>
+    <div id="ce-screen-input">
+      <div class="login-field">
+        <label>New Email Address</label>
+        <input type="email" id="ce-new-email" placeholder="new@example.com" style="text-align:left">
+      </div>
+      <p id="ce-input-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:8px"></p>
+      <div class="md-btns">
+        <button class="mb sec" onclick="closeModal('mo-change-email')">Cancel</button>
+        <button class="mb pri" onclick="submitChangeEmail()">Send Confirmation</button>
+      </div>
+    </div>
+
+    <!-- Step 1: waiting for new email confirmation -->
+    <div id="ce-screen-new" style="display:none;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">📬</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;margin-bottom:6px">Check Your New Email</div>
+      <p style="font-size:12px;color:var(--mu);margin-bottom:6px">Confirmation sent to</p>
+      <p id="ce-new-addr" style="font-size:13px;font-weight:600;margin-bottom:16px"></p>
+      <p style="font-size:11px;color:var(--mu);margin-bottom:16px">Click the link in the email to confirm your new address. This page will update automatically.</p>
+      <div id="ce-new-status" style="font-size:12px;color:var(--mu);margin-bottom:14px">⏳ Waiting for confirmation…</div>
+      <button class="mb sec" style="width:100%;margin-bottom:8px" onclick="cancelEmailChange()">Cancel Change</button>
+    </div>
+
+    <!-- Step 2: new confirmed, waiting for old email -->
+    <div id="ce-screen-old" style="display:none;text-align:center">
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;color:var(--gn);font-weight:600;margin-bottom:4px">✓ New email confirmed</div>
+        <div style="font-size:11px;color:var(--mu)">Now confirm from your old email address</div>
+      </div>
+      <div style="font-size:40px;margin-bottom:10px">📬</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;margin-bottom:6px">Check Your Old Email</div>
+      <p style="font-size:12px;color:var(--mu);margin-bottom:6px">Confirmation sent to</p>
+      <p id="ce-old-addr" style="font-size:13px;font-weight:600;margin-bottom:16px"></p>
+      <p style="font-size:11px;color:var(--mu);margin-bottom:16px">Click the link in your old email to complete the change.</p>
+      <div id="ce-old-status" style="font-size:12px;color:var(--mu);margin-bottom:14px">⏳ Waiting for confirmation…</div>
+      <button class="mb sec" style="width:100%;margin-bottom:8px" onclick="cancelEmailChange()">Cancel Change</button>
+    </div>
+
+    <!-- Step 3: both confirmed -->
+    <div id="ce-screen-done" style="display:none;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;margin-bottom:8px">Email Changed</div>
+      <p id="ce-done-msg" style="font-size:12px;color:var(--mu);margin-bottom:20px"></p>
+      <button class="mb pri" style="width:100%" onclick="closeModal('mo-change-email')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE EMAIL MODAL -->
+
 <!-- MERGE DATA MODAL -->
 <div class="mo" id="mo-merge">
   <div class="md">
@@ -4449,24 +4503,62 @@ async function linkEmail(){
   else{alert("Email linked!");openLinkAccounts();}
 }
 
-async function openChangeEmail(){
+function openChangeEmail(){
+  closeModal("mo-link");
+  const pending=sessionStorage.getItem("ce_state");
+  if(pending){
+    showCEScreen(JSON.parse(pending));
+  } else {
+    document.getElementById("ce-screen-input").style.display="";
+    document.getElementById("ce-screen-new").style.display="none";
+    document.getElementById("ce-screen-old").style.display="none";
+    document.getElementById("ce-screen-done").style.display="none";
+    document.getElementById("ce-new-email").value="";
+    document.getElementById("ce-input-err").textContent="";
+  }
+  openModal("mo-change-email");
+}
+
+function showCEScreen(state){
+  ["ce-screen-input","ce-screen-new","ce-screen-old","ce-screen-done"].forEach(id=>{
+    document.getElementById(id).style.display="none";
+  });
+  if(state.step==="new"){
+    document.getElementById("ce-screen-new").style.display="";
+    document.getElementById("ce-new-addr").textContent=state.newEmail;
+  } else if(state.step==="old"){
+    document.getElementById("ce-screen-old").style.display="";
+    document.getElementById("ce-old-addr").textContent=state.oldEmail;
+  } else if(state.step==="done"){
+    document.getElementById("ce-screen-done").style.display="";
+    document.getElementById("ce-done-msg").textContent=`Your email has been changed to ${state.newEmail}`;
+  }
+}
+
+async function submitChangeEmail(){
   const {data:{user}}=await _sb.auth.getUser();
   const currentEmail=user.email||"";
-  closeModal("mo-link");
-
-  const newEmail=prompt("Enter your new email address:");
-  if(!newEmail) return;
-  if(!newEmail.includes("@")){alert("Invalid email address.");return;}
+  const newEmail=document.getElementById("ce-new-email").value.trim();
+  const errEl=document.getElementById("ce-input-err");
+  errEl.textContent="";
+  if(!newEmail||!newEmail.includes("@")){errEl.textContent="Enter a valid email.";return;}
   if(newEmail.toLowerCase()===currentEmail.toLowerCase()){
-    alert("That's already your current email address.");return;
+    errEl.textContent="That's already your current email.";return;
   }
-
   const {error}=await _sb.auth.updateUser({
     email:newEmail,
-    options:{emailRedirectTo:"https://gymtracking.co.uk/"}
+    options:{emailRedirectTo:"https://gymtracking.co.uk"}
   });
-  if(error){alert(error.message);return;}
-  alert(`Confirmation sent to ${newEmail} — click the link to confirm. Your email won't change until you confirm.`);
+  if(error){errEl.textContent=error.message;return;}
+  const state={step:"new",newEmail,oldEmail:currentEmail};
+  sessionStorage.setItem("ce_state",JSON.stringify(state));
+  showCEScreen(state);
+}
+
+async function cancelEmailChange(){
+  sessionStorage.removeItem("ce_state");
+  closeModal("mo-change-email");
+  alert("Change cancelled. If you already clicked a confirmation link, it will expire in 1 hour.");
 }
 
 async function unlinkGoogle(){
@@ -5190,9 +5282,19 @@ async function bootApp(session){
   applyTabOrder();
 
   // Show email changed success notice
+  // Show email change progress if returning from a confirmation link
   if(sessionStorage.getItem("show_email_changed")){
+    const result=sessionStorage.getItem("show_email_changed");
     sessionStorage.removeItem("show_email_changed");
-    setTimeout(()=>alert("✓ Email address updated successfully!"),500);
+    setTimeout(()=>{
+      const ceState=sessionStorage.getItem("ce_state");
+      if(ceState){
+        showCEScreen(JSON.parse(ceState));
+        openModal("mo-change-email");
+      } else if(result==="done"){
+        alert("✓ Email address updated successfully!");
+      }
+    },600);
   }
   updatePublicStatsBtn();
   buildTemplateGrid();
@@ -5229,12 +5331,19 @@ async function bootApp(session){
         window.history.replaceState(null,"",window.location.pathname);
         return;
       }
-      // For email_change, app will boot normally via onAuthStateChange USER_UPDATED
-      // Show a brief success notice
-      if(type==="email_change"&&!error){
+      if((type==="email_change"||type==="email_change_current"||type==="email_change_new")&&!error){
         window.history.replaceState(null,"",window.location.pathname);
-        // Small banner shown after app boots
-        sessionStorage.setItem("show_email_changed","1");
+        const ceState=sessionStorage.getItem("ce_state");
+        const state=ceState?JSON.parse(ceState):{};
+        if(type==="email_change_new"){
+          // New email confirmed — advance to waiting for old email
+          sessionStorage.setItem("ce_state",JSON.stringify({...state,step:"old"}));
+          sessionStorage.setItem("show_email_changed","new_confirmed");
+        } else {
+          // Old email confirmed — done
+          sessionStorage.setItem("ce_state",JSON.stringify({...state,step:"done"}));
+          sessionStorage.setItem("show_email_changed","done");
+        }
       }
     }catch(e){
       console.warn("Token verify error:",e.message);
