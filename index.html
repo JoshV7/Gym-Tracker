@@ -4505,7 +4505,7 @@ async function linkEmail(){
 
 function openChangeEmail(){
   closeModal("mo-link");
-  const pending=sessionStorage.getItem("ce_state");
+  const pending=localStorage.getItem("ce_state_"+currentId);
   if(pending){
     showCEScreen(JSON.parse(pending));
   } else {
@@ -4551,12 +4551,14 @@ async function submitChangeEmail(){
   });
   if(error){errEl.textContent=error.message;return;}
   const state={step:"new",newEmail,oldEmail:currentEmail};
-  sessionStorage.setItem("ce_state",JSON.stringify(state));
+  localStorage.setItem("ce_state_"+(currentId||"pending"),JSON.stringify(state));
   showCEScreen(state);
 }
 
 async function cancelEmailChange(){
-  sessionStorage.removeItem("ce_state");
+  localStorage.removeItem("ce_state_"+currentId);
+  localStorage.removeItem("ce_state_pending");
+  localStorage.removeItem("show_email_changed");
   closeModal("mo-change-email");
   alert("Change cancelled. If you already clicked a confirmation link, it will expire in 1 hour.");
 }
@@ -5282,17 +5284,25 @@ async function bootApp(session){
   applyTabOrder();
 
   // Show email changed success notice
+  // Merge any pending ce_state (set before currentId was known) into user-specific key
+  const cePending=localStorage.getItem("ce_state_pending");
+  if(cePending){
+    localStorage.setItem("ce_state_"+currentId,cePending);
+    localStorage.removeItem("ce_state_pending");
+  }
+
   // Show email change progress if returning from a confirmation link
-  if(sessionStorage.getItem("show_email_changed")){
-    const result=sessionStorage.getItem("show_email_changed");
-    sessionStorage.removeItem("show_email_changed");
+  if(localStorage.getItem("show_email_changed")){
+    const result=localStorage.getItem("show_email_changed");
+    localStorage.removeItem("show_email_changed");
     setTimeout(()=>{
-      const ceState=sessionStorage.getItem("ce_state");
+      const ceState=localStorage.getItem("ce_state_"+currentId);
       if(ceState){
-        showCEScreen(JSON.parse(ceState));
+        const state=JSON.parse(ceState);
+        // If done, clear state
+        if(state.step==="done") localStorage.removeItem("ce_state_"+currentId);
+        showCEScreen(state);
         openModal("mo-change-email");
-      } else if(result==="done"){
-        alert("✓ Email address updated successfully!");
       }
     },600);
   }
@@ -5333,16 +5343,16 @@ async function bootApp(session){
       }
       if((type==="email_change"||type==="email_change_current"||type==="email_change_new")&&!error){
         window.history.replaceState(null,"",window.location.pathname);
-        const ceState=sessionStorage.getItem("ce_state");
+        const ceState=localStorage.getItem("ce_state_"+currentId);
         const state=ceState?JSON.parse(ceState):{};
         if(type==="email_change_new"){
           // New email confirmed — advance to waiting for old email
-          sessionStorage.setItem("ce_state",JSON.stringify({...state,step:"old"}));
-          sessionStorage.setItem("show_email_changed","new_confirmed");
+          localStorage.setItem("ce_state_pending",JSON.stringify({...state,step:"old"}));
+          localStorage.setItem("show_email_changed","new_confirmed");
         } else {
           // Old email confirmed — done
-          sessionStorage.setItem("ce_state",JSON.stringify({...state,step:"done"}));
-          sessionStorage.setItem("show_email_changed","done");
+          localStorage.setItem("ce_state_pending",JSON.stringify({...state,step:"done"}));
+          localStorage.setItem("show_email_changed","done");
         }
       }
     }catch(e){
