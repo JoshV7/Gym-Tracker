@@ -4636,16 +4636,16 @@ async function ceSubmit(){
   if(newEmail.toLowerCase()===currentEmail.toLowerCase()){errEl.textContent="That's already your current email.";return;}
 
   btn.disabled=true;btn.textContent="Sending…";
-  // Send OTP to new email using signInWithOtp (shouldCreateUser:false)
+  // Send OTP to new email — verify they own it before changing
   const {error}=await _sb.auth.signInWithOtp({
     email:newEmail,
-    options:{shouldCreateUser:false,emailRedirectTo:"https://gymtracking.co.uk"}
+    options:{shouldCreateUser:true} // must be true for unregistered emails
   });
   btn.disabled=false;btn.textContent="Send Code";
-  if(error&&!error.message.toLowerCase().includes("not found")){
-    // If email not found, still proceed (don't reveal existence)
+  if(error){
+    if(error.message.toLowerCase().includes("rate")){errEl.textContent=error.message;return;}
+    // Other errors — still show the code screen (code may have sent)
   }
-  if(error&&error.message.toLowerCase().includes("rate")){errEl.textContent=error.message;return;}
 
   const state={step:"new",newEmail,oldEmail:currentEmail};
   _ceSave(state);
