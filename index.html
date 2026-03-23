@@ -4672,7 +4672,9 @@ async function ceVerifyCode(){
   }
 
   // Now change the email
-  const {error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
+  console.log("Attempting updateUser with email:",state.newEmail);
+  const {data:updateData,error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
+  console.log("updateUser result:",updateData?.user?.email, updateErr?.message);
   if(updateErr){
     codeEl.disabled=false;
     codeEl.style.borderColor="var(--red)";
