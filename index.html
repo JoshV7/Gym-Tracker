@@ -5485,6 +5485,7 @@ async function bootApp(session){
 })();
 
 _sb.auth.onAuthStateChange((event,session)=>{
+  console.log("🔐 Auth event:",event, session?.user?.email);
   if(event==="PASSWORD_RECOVERY"){
     // User clicked reset link — show new password form
     document.getElementById("login-screen").style.display="flex";
