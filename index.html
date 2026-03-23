@@ -4450,12 +4450,23 @@ async function linkEmail(){
 }
 
 async function openChangeEmail(){
+  const {data:{user}}=await _sb.auth.getUser();
+  const currentEmail=user.email||"";
   closeModal("mo-link");
+
   const newEmail=prompt("Enter your new email address:");
-  if(!newEmail||!newEmail.includes("@")){alert("Invalid email.");return;}
-  const {error}=await _sb.auth.updateUser({email:newEmail});
+  if(!newEmail) return;
+  if(!newEmail.includes("@")){alert("Invalid email address.");return;}
+  if(newEmail.toLowerCase()===currentEmail.toLowerCase()){
+    alert("That's already your current email address.");return;
+  }
+
+  const {error}=await _sb.auth.updateUser({
+    email:newEmail,
+    options:{emailRedirectTo:"https://gymtracking.co.uk/"}
+  });
   if(error){alert(error.message);return;}
-  alert("Confirmation sent to "+newEmail+" — click the link to confirm the change. You may also need to confirm from your old email address.");
+  alert(`Confirmation sent to ${newEmail} — click the link to confirm. Your email won't change until you confirm.`);
 }
 
 async function unlinkGoogle(){
@@ -5176,7 +5187,13 @@ async function bootApp(session){
   }
 
   applyAccent(accent());applyTheme();renderChips();buildProgNav();updateDash();updateStreak();
-  applyTabOrder(); // restore custom tab order if set
+  applyTabOrder();
+
+  // Show email changed success notice
+  if(sessionStorage.getItem("show_email_changed")){
+    sessionStorage.removeItem("show_email_changed");
+    setTimeout(()=>alert("✓ Email address updated successfully!"),500);
+  }
   updatePublicStatsBtn();
   buildTemplateGrid();
   if(isOnline) flushQueue();
@@ -5210,8 +5227,14 @@ async function bootApp(session){
       // For recovery type, show new password form instead of booting app
       if(type==="recovery"&&!error){
         window.history.replaceState(null,"",window.location.pathname);
-        // onAuthStateChange will fire PASSWORD_RECOVERY and call showNewPassword
         return;
+      }
+      // For email_change, app will boot normally via onAuthStateChange USER_UPDATED
+      // Show a brief success notice
+      if(type==="email_change"&&!error){
+        window.history.replaceState(null,"",window.location.pathname);
+        // Small banner shown after app boots
+        sessionStorage.setItem("show_email_changed","1");
       }
     }catch(e){
       console.warn("Token verify error:",e.message);
