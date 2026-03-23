@@ -5449,6 +5449,8 @@ async function bootApp(session){
   const code=params.get("code");
   const tokenHash=params.get("token_hash");
   const type=params.get("type");
+  // DEBUG — remove after testing
+  if(type) console.log("🔑 Token type:",type,"hash:",tokenHash?.slice(0,10));
   if(tokenHash&&type){
     try{
       const {error}=await _sb.auth.verifyOtp({token_hash:tokenHash,type});
