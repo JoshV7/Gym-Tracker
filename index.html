@@ -907,14 +907,14 @@ select{cursor:pointer;}
 <!-- MAIN NAV -->
 <div class="main-nav" id="main-nav">
   <div class="mtab active" onclick="showMain('dash',event)">Dashboard</div>
-  <div class="mtab" data-page="bw" onclick="showMain('bw',event)">Bodyweight</div>
   <div class="mtab" id="prog-tab" data-page="prog" onclick="showMain('prog',event)">Programs</div>
-  <div class="mtab" onclick="showMain('analytics',event)">Analytics</div>
-  <div class="mtab" onclick="showMain('body',event)">Body</div>
   <div class="mtab" onclick="showMain('pr',event)">PR Tracker</div>
+  <div class="mtab" onclick="showMain('analytics',event)">Analytics</div>
+  <div class="mtab" data-page="bw" onclick="showMain('bw',event)">Bodyweight</div>
+  <div class="mtab" onclick="showMain('body',event)">Body</div>
+  <div class="mtab" onclick="showMain('plates',event)">Plates</div>
   <div class="mtab" onclick="showMain('feed',event)">Recent Lifts</div>
   <div class="mtab" onclick="showMain('friends',event)">Friends</div>
-  <div class="mtab" onclick="showMain('plates',event)">Plates</div>
 </div>
 
 <!-- SUB NAV (context-sensitive) -->
@@ -2292,6 +2292,8 @@ function updateDash(){
       onclick="openAvatarPicker()">📷 Avatar</button>
     <button class="save-btn" style="margin-top:0;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
       onclick="openLinkAccounts()">🔗 Linked Accounts</button>
+    <button class="save-btn" style="margin-top:5px;margin-right:5px;background:var(--sf2);color:var(--tx);border:1px solid var(--bd)"
+      onclick="openRearrangeTabs()">⇅ Rearrange Tabs</button>
     <button class="save-btn" style="margin-top:8px;background:var(--red)"
       onclick="openDeleteAccount()">Delete Account</button>
   </div>
@@ -4858,7 +4860,93 @@ async function doDeleteAccount(){
 }
 
 // ══════════════════════════════════════════════════════
-//  BUG REPORT
+//  REARRANGE TABS
+// ══════════════════════════════════════════════════════
+const DEFAULT_TAB_ORDER=[
+  {id:"prog",label:"Programs"},
+  {id:"pr",label:"PR Tracker"},
+  {id:"analytics",label:"Analytics"},
+  {id:"bw",label:"Bodyweight"},
+  {id:"body",label:"Body"},
+  {id:"plates",label:"Plates"},
+  {id:"feed",label:"Recent Lifts"},
+  {id:"friends",label:"Friends"},
+];
+
+function getTabOrder(){
+  try{
+    const saved=localStorage.getItem("tab_order_"+currentId);
+    if(saved) return JSON.parse(saved);
+  }catch{}
+  return DEFAULT_TAB_ORDER;
+}
+
+function applyTabOrder(){
+  const order=getTabOrder();
+  const nav=document.getElementById("main-nav");
+  // Keep dashboard first, then reorder the rest
+  const dashTab=nav.querySelector(".mtab.active,[onclick*=\"'dash'\"]");
+  // Rebuild nav tabs in order
+  const tabs=order.map(t=>`
+    <div class="mtab${currentMain===t.id?" active":""}"
+      ${t.id==="prog"?'id="prog-tab" data-page="prog"':t.id==="bw"?'data-page="bw"':""}
+      onclick="showMain('${t.id}',event)">${t.label}</div>`).join("");
+  nav.innerHTML=`
+    <div class="mtab${currentMain==="dash"?" active":""}" onclick="showMain('dash',event)">Dashboard</div>
+    ${tabs}`;
+}
+
+function openRearrangeTabs(){
+  const order=getTabOrder();
+  const list=document.getElementById("rearrange-list");
+  list.innerHTML=order.map((t,i)=>`
+    <div class="rearrange-item" data-id="${t.id}" data-idx="${i}"
+      style="display:flex;align-items:center;gap:10px;background:var(--sf2);
+      border:1px solid var(--bd);border-radius:5px;padding:10px 12px;cursor:grab;
+      user-select:none;touch-action:none"
+      draggable="true"
+      ondragstart="rearrangeDragStart(event)"
+      ondragover="rearrangeDragOver(event)"
+      ondrop="rearrangeDrop(event)"
+      ondragend="rearrangeDragEnd(event)">
+      <span style="color:var(--mu);font-size:16px">☰</span>
+      <span style="font-size:13px;flex:1">${t.label}</span>
+    </div>`).join("");
+  openModal("mo-rearrange");
+}
+
+let _dragSrc=null;
+function rearrangeDragStart(e){
+  _dragSrc=e.currentTarget;
+  e.currentTarget.style.opacity="0.4";
+  e.dataTransfer.effectAllowed="move";
+}
+function rearrangeDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect="move";
+  const items=[...document.querySelectorAll(".rearrange-item")];
+  const target=e.currentTarget;
+  if(target!==_dragSrc){
+    const srcIdx=items.indexOf(_dragSrc);
+    const tgtIdx=items.indexOf(target);
+    const list=document.getElementById("rearrange-list");
+    if(srcIdx<tgtIdx) list.insertBefore(_dragSrc,target.nextSibling);
+    else list.insertBefore(_dragSrc,target);
+  }
+}
+function rearrangeDrop(e){e.preventDefault();}
+function rearrangeDragEnd(e){e.currentTarget.style.opacity="1";}
+
+function saveTabOrder(){
+  const items=[...document.querySelectorAll(".rearrange-item")];
+  const order=items.map(el=>({
+    id:el.dataset.id,
+    label:el.querySelector("span:last-child").textContent.trim()
+  }));
+  localStorage.setItem("tab_order_"+currentId,JSON.stringify(order));
+  applyTabOrder();
+  closeModal("mo-rearrange");
+}
 // ══════════════════════════════════════════════════════
 function openBugReport(){
   document.getElementById("bug-description").value="";
@@ -5055,6 +5143,7 @@ async function bootApp(session){
   }
 
   applyAccent(accent());applyTheme();renderChips();buildProgNav();updateDash();updateStreak();
+  applyTabOrder(); // restore custom tab order if set
   updatePublicStatsBtn();
   buildTemplateGrid();
   if(isOnline) flushQueue();
@@ -5167,6 +5256,19 @@ _sb.auth.onAuthStateChange((event,session)=>{
       <button class="mb pri" onclick="submitBugReport()">Send Report</button>
     </div>
     <p id="bug-submit-status" style="font-size:11px;text-align:center;margin-top:8px"></p>
+  </div>
+</div>
+
+<!-- REARRANGE TABS MODAL -->
+<div class="mo" id="mo-rearrange">
+  <div class="md" style="max-width:360px;width:min(360px,95vw)">
+    <h2>Rearrange Tabs</h2>
+    <p style="font-size:11px;color:var(--mu);margin-bottom:12px">Drag to reorder. Dashboard is always first.</p>
+    <div id="rearrange-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+    <div class="md-btns">
+      <button class="mb sec" onclick="closeModal('mo-rearrange')">Cancel</button>
+      <button class="mb pri" onclick="saveTabOrder()">Save</button>
+    </div>
   </div>
 </div>
 
