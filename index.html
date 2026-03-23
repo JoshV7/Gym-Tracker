@@ -4581,13 +4581,13 @@ function _ceKey(){return "ce_state_"+(currentId||"pending");}
 function _ceSave(state){
   localStorage.setItem("ce_state_pending",JSON.stringify(state));
   if(currentId) localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
-  if(currentId) _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).catch(()=>{});
+  if(currentId) _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
 }
 function _ceClear(){
   localStorage.removeItem("ce_state_pending");
   if(currentId){
     localStorage.removeItem("ce_state_"+currentId);
-    _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).catch(()=>{});
+    _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
   }
 }
 function _ceLoad(){
@@ -5492,6 +5492,22 @@ _sb.auth.onAuthStateChange((event,session)=>{
     showNewPassword();
     return;
   }
+  // Advance CE state on USER_UPDATED (fired when email confirmation link is clicked)
+  if(event==="USER_UPDATED"&&session){
+    const ceRaw=localStorage.getItem("ce_state_pending")||
+      Object.keys(localStorage).filter(k=>k.startsWith("ce_state_")&&k!=="ce_state_pending")
+        .map(k=>localStorage.getItem(k)).find(Boolean);
+    if(ceRaw){
+      const state=JSON.parse(ceRaw);
+      if(state.step==="new"||state.step==="old"){
+        const nextStep=state.step==="new"?"old":"done";
+        const newState={...state,step:nextStep};
+        localStorage.setItem("ce_state_pending",JSON.stringify(newState));
+        const uid=session.user?.id;
+        if(uid) localStorage.setItem("ce_state_"+uid,JSON.stringify(newState));
+      }
+    }
+  }
   if(session&&(event==="SIGNED_IN"||event==="INITIAL_SESSION"||event==="TOKEN_REFRESHED"||event==="USER_UPDATED")){
     if(window.location.hash.includes("access_token")||window.location.search.includes("code=")){
       window.history.replaceState(null,"",window.location.pathname);
@@ -5507,7 +5523,7 @@ _sb.auth.onAuthStateChange((event,session)=>{
 <div id="version-tag" style="position:fixed;bottom:16px;left:16px;z-index:10000;
   font-size:10px;color:rgba(255,255,255,0.35);pointer-events:none;letter-spacing:.5px;
   text-shadow:0 1px 3px rgba(0,0,0,.5)">
-  GT
+  GT · <span id="push-time">23 Mar</span>
 </div>
 
 <div id="copyright-tag" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10000;
