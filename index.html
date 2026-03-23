@@ -165,6 +165,16 @@ main{padding:13px;max-width:1000px;margin:0 auto;}
 .sched-i{margin-top:4px;font-size:10px;color:var(--mu);line-height:1.8;}
 
 
+/* CHANGE EMAIL PROGRESS */
+.ce-row{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:5px;
+  border:1px solid var(--bd);margin-bottom:8px;transition:.3s;}
+.ce-icon{font-size:20px;width:28px;text-align:center;flex-shrink:0;margin-top:1px;}
+.ce-text{flex:1;}
+.ce-title{font-size:12px;font-weight:600;margin-bottom:2px;}
+.ce-sub{font-size:11px;color:var(--mu);}
+.ce-row.done{border-color:var(--gn);}
+.ce-row.active{border-color:var(--ac);}
+
 /* PLATE CALCULATOR */
 .plate-btn{padding:8px 0;border-radius:6px;border:2px solid var(--bd);
   background:transparent;color:var(--mu);font-size:13px;font-weight:700;
@@ -677,6 +687,60 @@ select{cursor:pointer;}
 </div>
 
 <!-- CHANGE EMAIL MODAL -->
+<div class="mo" id="mo-change-email" style="z-index:20000">
+  <div class="md" style="max-width:420px;width:min(420px,95vw)">
+    <h2>Change Email</h2>
+
+    <!-- INPUT SCREEN -->
+    <div id="ce-input">
+      <div class="login-field">
+        <label>New Email Address</label>
+        <input type="email" id="ce-new-email" placeholder="new@example.com" style="text-align:left"
+          onkeydown="if(event.key==='Enter') ceSubmit()">
+      </div>
+      <p id="ce-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:8px"></p>
+      <div class="md-btns">
+        <button class="mb sec" onclick="ceCancel()">Cancel</button>
+        <button class="mb pri" id="ce-send-btn" onclick="ceSubmit()">Send Confirmation</button>
+      </div>
+    </div>
+
+    <!-- PROGRESS SCREEN -->
+    <div id="ce-progress" style="display:none">
+      <p id="ce-prog-sub" style="font-size:12px;color:var(--mu);margin-bottom:16px;text-align:center"></p>
+
+      <div class="ce-row" id="ce-row-1">
+        <div class="ce-icon" id="ce-ico-1">⏳</div>
+        <div class="ce-text">
+          <div class="ce-title" id="ce-ttl-1">Confirm new email</div>
+          <div class="ce-sub" id="ce-sub-1">Check your new inbox and click the link</div>
+        </div>
+      </div>
+
+      <div class="ce-row" id="ce-row-2" style="opacity:.35">
+        <div class="ce-icon" id="ce-ico-2">🔒</div>
+        <div class="ce-text">
+          <div class="ce-title" id="ce-ttl-2">Confirm old email</div>
+          <div class="ce-sub" id="ce-sub-2">Available after step 1</div>
+        </div>
+      </div>
+
+      <div class="ce-row" id="ce-row-3" style="opacity:.35">
+        <div class="ce-icon" id="ce-ico-3">🔒</div>
+        <div class="ce-text">
+          <div class="ce-title" id="ce-ttl-3">Email changed</div>
+          <div class="ce-sub" id="ce-sub-3">Available after step 2</div>
+        </div>
+      </div>
+
+      <div class="md-btns" style="margin-top:16px">
+        <button class="mb sec" onclick="ceCancel()">Cancel Change</button>
+        <button class="mb pri" id="ce-done-btn" disabled onclick="ceDone()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mo-change-email">
   <div class="md" style="max-width:420px;width:min(420px,95vw)">
     <h2>Change Email</h2>
@@ -4512,117 +4576,129 @@ async function linkEmail(){
   else{alert("Email linked!");openLinkAccounts();}
 }
 
-function openChangeEmail(){
-  closeModal("mo-link");
-  // Check for existing pending state
-  const raw=localStorage.getItem("ce_state_"+currentId)||localStorage.getItem("ce_state_pending");
-  if(raw){
-    const state=JSON.parse(raw);
-    document.getElementById("ce-screen-input").style.display="none";
-    document.getElementById("ce-screen-progress").style.display="";
-    renderCEProgress(state);
-  } else {
-    document.getElementById("ce-screen-input").style.display="";
-    document.getElementById("ce-screen-progress").style.display="none";
-    document.getElementById("ce-new-email").value="";
-    document.getElementById("ce-input-err").textContent="";
+// ── CE helpers ──────────────────────────────────────────
+function _ceKey(){return "ce_state_"+(currentId||"pending");}
+function _ceSave(state){
+  localStorage.setItem("ce_state_pending",JSON.stringify(state));
+  if(currentId) localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
+  if(currentId) _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).catch(()=>{});
+}
+function _ceClear(){
+  localStorage.removeItem("ce_state_pending");
+  if(currentId){
+    localStorage.removeItem("ce_state_"+currentId);
+    _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).catch(()=>{});
   }
-  openModal("mo-change-email");
+}
+function _ceLoad(){
+  const raw=localStorage.getItem("ce_state_"+currentId)||localStorage.getItem("ce_state_pending");
+  return raw?JSON.parse(raw):null;
 }
 
-function renderCEProgress(state){
-  // state.step: "new" | "old" | "done"
-  // state.newEmail, state.oldEmail
-  const step=state.step;
-
-  document.getElementById("ce-prog-subtitle").textContent=
-    `Changing to: ${state.newEmail||""}`;
-
-  // Step 1
+function _ceRender(state){
+  const step=state.step; // "new" | "old" | "done"
   const s1done=step==="old"||step==="done";
-  document.getElementById("ce-icon-1").textContent=s1done?"✅":"⏳";
-  document.getElementById("ce-label-1").textContent=s1done?"New email confirmed":"Confirm new email";
-  document.getElementById("ce-sub-1").textContent=s1done
-    ?state.newEmail
-    :`Check ${state.newEmail||"your new email"} and click the link`;
-  document.getElementById("ce-step-1").style.opacity="1";
-  document.getElementById("ce-step-1").style.borderColor=s1done?"var(--gn)":"var(--bd)";
-
-  // Step 2
   const s2done=step==="done";
   const s2active=step==="old";
-  document.getElementById("ce-icon-2").textContent=s2done?"✅":s2active?"⏳":"🔒";
-  document.getElementById("ce-label-2").textContent=s2done?"Old email confirmed":"Confirm old email";
-  document.getElementById("ce-sub-2").textContent=s2done
-    ?state.oldEmail
-    :s2active?`Check ${state.oldEmail||"your old email"} and click the link`
-    :"Available after step 1";
-  document.getElementById("ce-step-2").style.opacity=s1done?"1":"0.4";
-  document.getElementById("ce-step-2").style.borderColor=s2done?"var(--gn)":"var(--bd)";
 
-  // Step 3
-  document.getElementById("ce-icon-3").textContent=s2done?"✅":"🔒";
-  document.getElementById("ce-sub-3").textContent=s2done
-    ?"Email successfully changed":"Available after step 2";
-  document.getElementById("ce-step-3").style.opacity=s2done?"1":"0.4";
-  document.getElementById("ce-step-3").style.borderColor=s2done?"var(--gn)":"var(--bd)";
+  document.getElementById("ce-prog-sub").textContent=`Changing to: ${state.newEmail}`;
+
+  // Row 1
+  document.getElementById("ce-ico-1").textContent=s1done?"✅":"⏳";
+  document.getElementById("ce-ttl-1").textContent=s1done?"New email confirmed":"Confirm new email";
+  document.getElementById("ce-sub-1").textContent=s1done
+    ?state.newEmail:`Check ${state.newEmail} and click the link`;
+  document.getElementById("ce-row-1").className="ce-row"+(s1done?" done":" active");
+  document.getElementById("ce-row-1").style.opacity="1";
+
+  // Row 2
+  document.getElementById("ce-ico-2").textContent=s2done?"✅":s2active?"⏳":"🔒";
+  document.getElementById("ce-ttl-2").textContent=s2done?"Old email confirmed":"Confirm old email";
+  document.getElementById("ce-sub-2").textContent=s2done
+    ?state.oldEmail:s2active?`Check ${state.oldEmail} and click the link`:"Available after step 1";
+  document.getElementById("ce-row-2").className="ce-row"+(s2done?" done":s2active?" active":"");
+  document.getElementById("ce-row-2").style.opacity=s1done?"1":"0.35";
+
+  // Row 3
+  document.getElementById("ce-ico-3").textContent=s2done?"✅":"🔒";
+  document.getElementById("ce-sub-3").textContent=s2done?"Email successfully changed":"Available after step 2";
+  document.getElementById("ce-row-3").className="ce-row"+(s2done?" done":"");
+  document.getElementById("ce-row-3").style.opacity=s2done?"1":"0.35";
 
   // Done button
-  const btn=document.getElementById("ce-confirm-btn");
+  const btn=document.getElementById("ce-done-btn");
   btn.disabled=!s2done;
   btn.textContent=s2done?"Done":"Waiting…";
 }
 
-function showCEScreen(state){
-  document.getElementById("ce-screen-input").style.display="none";
-  document.getElementById("ce-screen-progress").style.display="";
-  renderCEProgress(state);
+function ceOpen(state){
+  // Show progress screen
+  document.getElementById("ce-input").style.display="none";
+  document.getElementById("ce-progress").style.display="";
+  _ceRender(state);
+  openModal("mo-change-email");
 }
 
-function ceDone(){
-  localStorage.removeItem("ce_state_"+currentId);
-  localStorage.removeItem("ce_state_pending");
-  closeModal("mo-change-email");
+function openChangeEmail(){
+  closeModal("mo-link");
+  const state=_ceLoad();
+  if(state){
+    ceOpen(state);
+  } else {
+    document.getElementById("ce-input").style.display="";
+    document.getElementById("ce-progress").style.display="none";
+    document.getElementById("ce-new-email").value="";
+    document.getElementById("ce-err").textContent="";
+    openModal("mo-change-email");
+  }
 }
 
-async function submitChangeEmail(){
+// Called from bootApp when redirected back from email link
+function ceCheckOnBoot(){
+  const state=_ceLoad();
+  if(!state) return;
+  // Force the modal open — nothing else usable until done or cancelled
+  ceOpen(state);
+}
+
+async function ceSubmit(){
   const {data:{user}}=await _sb.auth.getUser();
   const currentEmail=user.email||"";
   const newEmail=document.getElementById("ce-new-email").value.trim();
-  const errEl=document.getElementById("ce-input-err");
+  const errEl=document.getElementById("ce-err");
+  const btn=document.getElementById("ce-send-btn");
   errEl.textContent="";
   if(!newEmail||!newEmail.includes("@")){errEl.textContent="Enter a valid email.";return;}
   if(newEmail.toLowerCase()===currentEmail.toLowerCase()){
     errEl.textContent="That's already your current email.";return;
   }
-
+  btn.disabled=true;btn.textContent="Sending…";
   const {error}=await _sb.auth.updateUser({
     email:newEmail,
     options:{emailRedirectTo:"https://gymtracking.co.uk"}
   });
+  btn.disabled=false;btn.textContent="Send Confirmation";
   if(error){errEl.textContent=error.message;return;}
-
   const state={step:"new",newEmail,oldEmail:currentEmail};
-  localStorage.setItem("ce_state_pending",JSON.stringify(state));
-  if(currentId) localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
-  // Save to Supabase so it survives across devices
-  _sb.from("profiles").update({
-    pending_email_change:state
-  }).eq("user_id",currentId).catch(()=>{});
-
-  document.getElementById("ce-screen-input").style.display="none";
-  document.getElementById("ce-screen-progress").style.display="";
-  renderCEProgress(state);
+  _ceSave(state);
+  ceOpen(state);
 }
 
-async function cancelEmailChange(){
-  localStorage.removeItem("ce_state_"+currentId);
-  localStorage.removeItem("ce_state_pending");
-  localStorage.removeItem("show_email_changed");
-  // Clear from Supabase
-  _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).catch(()=>{});
+function ceDone(){
+  _ceClear();
   closeModal("mo-change-email");
 }
+
+function ceCancel(){
+  _ceClear();
+  closeModal("mo-change-email");
+  // If they had a pending change in Supabase, inform them it won't complete
+}
+
+// Legacy aliases
+function showCEScreen(s){ceOpen(s);}
+function submitChangeEmail(){ceSubmit();}
+function cancelEmailChange(){ceCancel();}
 
 async function unlinkGoogle(){
   if(!confirm("Unlink Google? You'll sign in with email and password only.")) return;
@@ -5345,31 +5421,8 @@ async function bootApp(session){
   applyTabOrder();
 
   // Show email changed success notice
-  // Merge any pending ce_state (set before currentId was known) into user-specific key
-  const cePending=localStorage.getItem("ce_state_pending");
-  if(cePending){
-    localStorage.setItem("ce_state_"+currentId,cePending);
-    localStorage.removeItem("ce_state_pending");
-  }
-
-  // Show email change progress if returning from a confirmation link
-  if(localStorage.getItem("show_email_changed")){
-    localStorage.removeItem("show_email_changed");
-    setTimeout(async()=>{
-      // Try localStorage first, then Supabase
-      let raw=localStorage.getItem("ce_state_"+currentId);
-      if(!raw){
-        const {data:prof}=await _sb.from("profiles").select("pending_email_change")
-          .eq("user_id",currentId).maybeSingle();
-        if(prof?.pending_email_change) raw=JSON.stringify(prof.pending_email_change);
-      }
-      if(raw){
-        const state=JSON.parse(raw);
-        showCEScreen(state);
-        openModal("mo-change-email");
-      }
-    },600);
-  }
+  // Check for pending email change — forces modal open if in progress
+  ceCheckOnBoot();
   updatePublicStatsBtn();
   buildTemplateGrid();
   if(isOnline) flushQueue();
@@ -5407,16 +5460,16 @@ async function bootApp(session){
       }
       if((type==="email_change"||type==="email_change_current"||type==="email_change_new")&&!error){
         window.history.replaceState(null,"",window.location.pathname);
+        // Find existing state from any CE key
         const ceRaw=localStorage.getItem("ce_state_pending")||
           Object.keys(localStorage).filter(k=>k.startsWith("ce_state_")&&k!=="ce_state_pending")
-            .map(k=>localStorage.getItem(k))[0];
-        const state=ceRaw?JSON.parse(ceRaw):{};
-        const newState=type==="email_change_new"
-          ?{...state,step:"old"}
-          :{...state,step:"done"};
+            .map(k=>localStorage.getItem(k)).find(Boolean);
+        const state=ceRaw?JSON.parse(ceRaw):{newEmail:"",oldEmail:""};
+        const newState={...state,
+          step:type==="email_change_new"?"old":"done"
+        };
+        // Save updated state — will be picked up by ceCheckOnBoot after app loads
         localStorage.setItem("ce_state_pending",JSON.stringify(newState));
-        localStorage.setItem("show_email_changed","1");
-        // Supabase automatically sends old email confirmation after new is confirmed
       }
     }catch(e){
       console.warn("Token verify error:",e.message);
