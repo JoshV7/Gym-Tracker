@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root{
@@ -512,6 +513,7 @@ select{cursor:pointer;}
           </div>
         </div>
       </div>
+      <div id="turnstile-widget" style="margin-bottom:10px;display:flex;justify-content:center"></div>
       <button class="login-btn pri" onclick="signUp()">Create Account</button>
       <button class="login-btn sec" onclick="showLogin()">Back to Sign In</button>
     </div>
@@ -692,8 +694,11 @@ select{cursor:pointer;}
   <div class="md" style="max-width:400px;width:min(400px,95vw)">
     <h2>Change Email</h2>
 
-    <!-- STEP 0: Enter new email -->
+    <!-- STEP 1: Enter new email -->
     <div id="ce-input">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:12px">
+        A verification code will be sent to your <strong>current</strong> email to confirm the change.
+      </p>
       <div class="login-field">
         <label>New Email Address</label>
         <input type="email" id="ce-new-email" placeholder="new@example.com" style="text-align:left"
@@ -706,62 +711,36 @@ select{cursor:pointer;}
       </div>
     </div>
 
-    <!-- PROGRESS: 3 steps with code inputs -->
-    <div id="ce-progress" style="display:none">
-      <p id="ce-prog-sub" style="font-size:11px;color:var(--mu);margin-bottom:14px;text-align:center"></p>
-
-      <!-- Row 1: new email -->
-      <div class="ce-row active" id="ce-row-1">
-        <div class="ce-icon" id="ce-ico-1">⏳</div>
-        <div class="ce-text">
-          <div class="ce-title" id="ce-ttl-1">Confirm new email</div>
-          <div class="ce-sub" id="ce-sub-1"></div>
-        </div>
-      </div>
-      <div id="ce-code-1-wrap" style="margin:-4px 0 10px 40px">
-        <div style="display:flex;align-items:center;gap:6px">
-          <input type="text" inputmode="numeric" id="ce-code-1" placeholder="000000"
-            style="width:110px;letter-spacing:6px;font-size:18px;text-align:center;padding:8px;font-weight:700"
-            maxlength="6">
-          <button class="save-btn" style="margin:0;padding:8px 14px" onclick="ceVerify(1)">Verify</button>
-        </div>
-        <p id="ce-code-1-err" style="color:var(--red);font-size:11px;margin-top:4px;min-height:14px"></p>
-      </div>
-
-      <!-- Row 2: old email -->
-      <div class="ce-row" id="ce-row-2" style="opacity:.35">
-        <div class="ce-icon" id="ce-ico-2">🔒</div>
-        <div class="ce-text">
-          <div class="ce-title" id="ce-ttl-2">Confirm old email</div>
-          <div class="ce-sub" id="ce-sub-2">Available after step 1</div>
-        </div>
-      </div>
-      <div id="ce-code-2-wrap" style="margin:-4px 0 10px 40px;display:none">
-        <div style="display:flex;align-items:center;gap:6px">
-          <input type="text" inputmode="numeric" id="ce-code-2" placeholder="000000"
-            style="width:110px;letter-spacing:6px;font-size:18px;text-align:center;padding:8px;font-weight:700"
-            maxlength="6">
-          <button class="save-btn" style="margin:0;padding:8px 14px" onclick="ceVerify(2)">Verify</button>
-        </div>
-        <p id="ce-code-2-err" style="color:var(--red);font-size:11px;margin-top:4px;min-height:14px"></p>
-      </div>
-
-      <!-- Row 3: done -->
-      <div class="ce-row" id="ce-row-3" style="opacity:.35">
-        <div class="ce-icon" id="ce-ico-3">🔒</div>
-        <div class="ce-text">
-          <div class="ce-title">Email changed</div>
-          <div class="ce-sub" id="ce-sub-3">Available after step 2</div>
-        </div>
-      </div>
-
-      <div class="md-btns" style="margin-top:16px">
+    <!-- STEP 2: Enter code sent to old email -->
+    <div id="ce-verify" style="display:none">
+      <p style="font-size:12px;color:var(--mu);margin-bottom:4px">Code sent to your current email</p>
+      <p id="ce-old-addr" style="font-size:13px;font-weight:600;margin-bottom:16px"></p>
+      <input type="text" inputmode="numeric" id="ce-code" maxlength="6" placeholder="000000"
+        style="width:100%;letter-spacing:10px;font-size:24px;font-weight:700;text-align:center;
+        padding:12px;background:var(--bg);border:2px solid var(--ac);color:var(--tx);
+        border-radius:4px;margin-bottom:6px"
+        onkeydown="if(event.key==='Enter') ceVerifyCode()">
+      <p id="ce-code-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:12px"></p>
+      <div class="md-btns">
         <button class="mb sec" onclick="ceCancel()">Cancel</button>
-        <button class="mb pri" id="ce-done-btn" disabled onclick="ceDone()">Done</button>
+        <button class="mb pri" id="ce-verify-btn" onclick="ceVerifyCode()">Verify</button>
       </div>
+      <p style="text-align:center;margin-top:10px">
+        <button style="background:none;border:none;color:var(--mu);font-size:11px;cursor:pointer;text-decoration:underline"
+          onclick="ceResend()">Resend code</button>
+      </p>
+    </div>
+
+    <!-- STEP 3: Done -->
+    <div id="ce-done-screen" style="display:none;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;margin-bottom:8px">Email Changed</div>
+      <p id="ce-done-msg" style="font-size:12px;color:var(--mu);margin-bottom:20px"></p>
+      <button class="mb pri" style="width:100%" onclick="ceDone()">Done</button>
     </div>
   </div>
 </div>
+
 
 <!-- MERGE DATA MODAL -->
 <div class="mo" id="mo-merge">
@@ -1048,11 +1027,22 @@ function showLogin(){
   });
   loginErr();
 }
+let _turnstileWidgetId=null;
 function showSignUp(){
   ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
     document.getElementById(id).style.display=id==="signup-form"?"":"none";
   });
   loginErr();
+  // Render Turnstile widget
+  const container=document.getElementById("turnstile-widget");
+  container.innerHTML="";
+  if(window.turnstile){
+    _turnstileWidgetId=window.turnstile.render(container,{
+      sitekey:"0x4AAAAAACusj9lhRasD3LeL",
+      theme:"dark",
+      size:"normal"
+    });
+  }
 }
 function showReset(){
   ["login-form","signup-form","reset-form","profile-form","confirm-email-form","new-password-form"].forEach(id=>{
@@ -1222,16 +1212,27 @@ async function signUp(){
   if(status==="✗ taken"){loginErr("That username is taken — choose another.");return;}
   if(status==="checking…"||status===""){loginErr("Wait for username check to complete.");return;}
 
+  // Get Turnstile token
+  let captchaToken="";
+  if(window.turnstile&&_turnstileWidgetId!==null){
+    captchaToken=window.turnstile.getResponse(_turnstileWidgetId)||"";
+    if(!captchaToken){loginErr("Please complete the captcha.");return;}
+  }
+
   const {data,error}=await _sb.auth.signUp({
     email,password,
-    options:{data:{
-      display_name:username,
-      pr:prBench,pr_squat:prSquat,pr_dl:prDL,
-      height_cm:height,weight_kg:weight,
-      colour:PRESETS[0],pin
-    }}
+    options:{
+      captchaToken:captchaToken||undefined,
+      data:{
+        display_name:username,
+        pr:prBench,pr_squat:prSquat,pr_dl:prDL,
+        height_cm:height,weight_kg:weight,
+        colour:PRESETS[0],pin
+      }
+    }
   });
   if(error){
+    if(window.turnstile&&_turnstileWidgetId!==null) window.turnstile.reset(_turnstileWidgetId);
     if(error.message.toLowerCase().includes("already registered")){
       loginErr("This email is already registered. Try signing in, or use Google.");
     } else {
@@ -4545,84 +4546,33 @@ async function linkEmail(){
 // step "old"  = new confirmed, waiting for old email OTP
 // step "done" = both confirmed, email changed
 
+// ── Change Email — verify old email with 6-digit code ──
 function _ceSave(state){
-  localStorage.setItem("ce_state_"+currentId, JSON.stringify(state));
-  _sb.from("profiles").update({pending_email_change:state}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  if(!currentId) return;
+  localStorage.setItem("ce_state_"+currentId,JSON.stringify(state));
 }
 function _ceClear(){
-  localStorage.removeItem("ce_state_"+currentId);
-  _sb.from("profiles").update({pending_email_change:null}).eq("user_id",currentId).then(()=>{}).catch(()=>{});
+  if(currentId) localStorage.removeItem("ce_state_"+currentId);
 }
 function _ceLoad(){
+  if(!currentId) return null;
   const raw=localStorage.getItem("ce_state_"+currentId);
   return raw?JSON.parse(raw):null;
 }
 
-function _ceRender(state){
-  const s1done=state.step==="old"||state.step==="done";
-  const s2done=state.step==="done";
-  const s2active=state.step==="old";
-
-  document.getElementById("ce-prog-sub").textContent=`Changing to: ${state.newEmail}`;
-
-  // Row 1
-  document.getElementById("ce-ico-1").textContent=s1done?"✅":"⏳";
-  document.getElementById("ce-ttl-1").textContent=s1done?"New email confirmed":"Confirm new email";
-  document.getElementById("ce-sub-1").textContent=s1done?state.newEmail:`Code sent to ${state.newEmail}`;
-  document.getElementById("ce-row-1").className="ce-row"+(s1done?" done":" active");
-  document.getElementById("ce-row-1").style.opacity="1";
-  document.getElementById("ce-code-1-wrap").style.display=s1done?"none":"";
-  document.getElementById("ce-code-1").value="";
-  document.getElementById("ce-code-1-err").textContent="";
-
-  // Row 2
-  document.getElementById("ce-ico-2").textContent=s2done?"✅":s2active?"⏳":"🔒";
-  document.getElementById("ce-ttl-2").textContent=s2done?"Old email confirmed":"Confirm old email";
-  document.getElementById("ce-sub-2").textContent=s2done?state.oldEmail:s2active?`Code sent to ${state.oldEmail}`:"Available after step 1";
-  document.getElementById("ce-row-2").className="ce-row"+(s2done?" done":s2active?" active":"");
-  document.getElementById("ce-row-2").style.opacity=s1done?"1":"0.35";
-  document.getElementById("ce-code-2-wrap").style.display=s2active?"":"none";
-  if(s2active){document.getElementById("ce-code-2").value="";document.getElementById("ce-code-2-err").textContent="";}
-
-  // Row 3
-  document.getElementById("ce-ico-3").textContent=s2done?"✅":"🔒";
-  document.getElementById("ce-sub-3").textContent=s2done?"Email successfully changed":"Available after step 2";
-  document.getElementById("ce-row-3").className="ce-row"+(s2done?" done":"");
-  document.getElementById("ce-row-3").style.opacity=s2done?"1":"0.35";
-
-  // Done button
-  const btn=document.getElementById("ce-done-btn");
-  btn.disabled=!s2done;
-  btn.textContent=s2done?"Done":"Waiting…";
-}
-
-function ceOpen(state){
-  document.getElementById("ce-input").style.display="none";
-  document.getElementById("ce-progress").style.display="";
-  _ceRender(state);
+function openChangeEmail(){
+  closeModal("mo-link");
+  _ceClear(); // always start fresh
+  document.getElementById("ce-input").style.display="";
+  document.getElementById("ce-verify").style.display="none";
+  document.getElementById("ce-done-screen").style.display="none";
+  document.getElementById("ce-new-email").value="";
+  document.getElementById("ce-err").textContent="";
   openModal("mo-change-email");
 }
 
-function openChangeEmail(){
-  closeModal("mo-link");
-  const state=_ceLoad();
-  if(state&&state.step!=="done"){
-    ceOpen(state);
-  } else {
-    _ceClear();
-    document.getElementById("ce-input").style.display="";
-    document.getElementById("ce-progress").style.display="none";
-    document.getElementById("ce-new-email").value="";
-    document.getElementById("ce-err").textContent="";
-    openModal("mo-change-email");
-  }
-}
-
 function ceCheckOnBoot(){
-  const state=_ceLoad();
-  if(!state||state.step==="done") return;
-  // Pending change — reopen modal (blocks app)
-  setTimeout(()=>ceOpen(state),300);
+  // No persistent blocking state needed for simplified flow
 }
 
 async function ceSubmit(){
@@ -4633,72 +4583,72 @@ async function ceSubmit(){
   const btn=document.getElementById("ce-send-btn");
   errEl.textContent="";
   if(!newEmail||!newEmail.includes("@")){errEl.textContent="Enter a valid email.";return;}
-  if(newEmail.toLowerCase()===currentEmail.toLowerCase()){errEl.textContent="That's already your current email.";return;}
-
+  if(newEmail.toLowerCase()===currentEmail.toLowerCase()){
+    errEl.textContent="That's already your current email.";return;
+  }
   btn.disabled=true;btn.textContent="Sending…";
-  // Send OTP to new email — verify they own it before changing
+
+  // Send OTP to CURRENT (old) email — verifies they still control it
   const {error}=await _sb.auth.signInWithOtp({
-    email:newEmail,
-    options:{shouldCreateUser:true} // must be true for unregistered emails
+    email:currentEmail
   });
   btn.disabled=false;btn.textContent="Send Code";
-  if(error){
-    if(error.message.toLowerCase().includes("rate")){errEl.textContent=error.message;return;}
-    // Other errors — still show the code screen (code may have sent)
+  if(error&&error.message.toLowerCase().includes("rate")){
+    errEl.textContent=error.message;return;
   }
 
-  const state={step:"new",newEmail,oldEmail:currentEmail};
-  _ceSave(state);
-  ceOpen(state);
+  // Store the intended new email
+  _ceSave({newEmail,oldEmail:currentEmail});
+
+  // Show verify screen
+  document.getElementById("ce-input").style.display="none";
+  document.getElementById("ce-verify").style.display="";
+  document.getElementById("ce-old-addr").textContent=currentEmail;
+  document.getElementById("ce-code").value="";
+  document.getElementById("ce-code-err").textContent="";
 }
 
-async function ceVerify(step){
+async function ceVerifyCode(){
   const state=_ceLoad();
   if(!state) return;
-  const codeEl=document.getElementById(`ce-code-${step}`);
-  const errEl=document.getElementById(`ce-code-${step}-err`);
-  const btn=codeEl.nextElementSibling;
-  const code=codeEl.value.trim();
+  const code=document.getElementById("ce-code").value.trim();
+  const errEl=document.getElementById("ce-code-err");
+  const btn=document.getElementById("ce-verify-btn");
   errEl.textContent="";
   if(code.length!==6||!/^\d{6}$/.test(code)){errEl.textContent="Enter the 6-digit code.";return;}
   btn.disabled=true;btn.textContent="Checking…";
 
-  const email=step===1?state.newEmail:state.oldEmail;
-
-  if(step===1){
-    // Verify new email OTP
-    const {error}=await _sb.auth.verifyOtp({email,token:code,type:"email"});
+  // Verify OTP against old email
+  const {error}=await _sb.auth.verifyOtp({
+    email:state.oldEmail,token:code,type:"email"
+  });
+  if(error){
     btn.disabled=false;btn.textContent="Verify";
-    if(error){errEl.textContent=error.message;return;}
-
-    // Initiate the actual email change on Supabase
-    const {error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
-    if(updateErr&&!updateErr.message.toLowerCase().includes("already")){
-      errEl.textContent=updateErr.message;return;
-    }
-
-    // Send OTP to old email for second confirmation
-    await _sb.auth.signInWithOtp({email:state.oldEmail,options:{shouldCreateUser:false}});
-
-    const newState={...state,step:"old"};
-    _ceSave(newState);
-    _ceRender(newState);
-
-  } else {
-    // Verify old email OTP — this completes the email change
-    const {error}=await _sb.auth.verifyOtp({email,token:code,type:"email"});
-    btn.disabled=false;btn.textContent="Verify";
-    if(error){errEl.textContent=error.message;return;}
-
-    const newState={...state,step:"done"};
-    _ceSave(newState);
-    _ceRender(newState);
-
-    // Update the UI to reflect new email
-    const a=ca();
-    if(a) a.name=a.name; // trigger re-render
-    updateDash();
+    errEl.textContent=error.message;return;
   }
+
+  // OTP verified — now change the email
+  const {error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
+  btn.disabled=false;btn.textContent="Verify";
+  if(updateErr){errEl.textContent=updateErr.message;return;}
+
+  // Done
+  _ceClear();
+  document.getElementById("ce-verify").style.display="none";
+  document.getElementById("ce-done-screen").style.display="";
+  document.getElementById("ce-done-msg").textContent=`Your email has been changed to ${state.newEmail}`;
+}
+
+async function ceResend(){
+  const state=_ceLoad();
+  if(!state) return;
+  await _sb.auth.signInWithOtp({email:state.oldEmail});
+  document.getElementById("ce-code-err").textContent="Code resent ✓";
+  document.getElementById("ce-code-err").style.color="var(--gn)";
+  setTimeout(()=>{
+    document.getElementById("ce-code-err").textContent="";
+    document.getElementById("ce-code-err").style.color="var(--red)";
+  },3000);
 }
 
 function ceDone(){
@@ -4712,7 +4662,7 @@ function ceCancel(){
 }
 
 // Legacy aliases
-function showCEScreen(s){ceOpen(s);}
+function showCEScreen(){}
 function submitChangeEmail(){ceSubmit();}
 function cancelEmailChange(){ceCancel();}
 
