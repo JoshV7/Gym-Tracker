@@ -722,11 +722,10 @@ select{cursor:pointer;}
         style="width:100%;letter-spacing:10px;font-size:24px;font-weight:700;text-align:center;
         padding:12px;background:var(--bg);border:2px solid var(--ac);color:var(--tx);
         border-radius:4px;margin-bottom:6px"
-        onkeydown="if(event.key==='Enter') ceVerifyCode()">
+        oninput="if(this.value.replace(/\D/g,'').length===6){this.value=this.value.replace(/\D/g,'');ceVerifyCode();}else{this.value=this.value.replace(/\D/g,'');}">
       <p id="ce-code-err" style="color:var(--red);font-size:11px;min-height:16px;margin-bottom:12px"></p>
       <div class="md-btns">
         <button class="mb sec" onclick="ceCancel()">Cancel</button>
-        <button class="mb pri" id="ce-verify-btn" onclick="ceVerifyCode()">Verify</button>
       </div>
       <p style="text-align:center;margin-top:10px">
         <button style="background:none;border:none;color:var(--mu);font-size:11px;cursor:pointer;text-decoration:underline"
@@ -4631,26 +4630,56 @@ async function ceSubmit(){
 async function ceVerifyCode(){
   const state=_ceLoad();
   if(!state) return;
-  const code=document.getElementById("ce-code").value.trim();
+  const codeEl=document.getElementById("ce-code");
   const errEl=document.getElementById("ce-code-err");
-  const btn=document.getElementById("ce-verify-btn");
+  const code=codeEl.value.trim();
   errEl.textContent="";
-  if(code.length!==6||!/^\d{6}$/.test(code)){errEl.textContent="Enter the 6-digit code.";return;}
-  btn.disabled=true;btn.textContent="Checking…";
+  if(code.length!==6||!/^\d{6}$/.test(code)){return;}
+
+  codeEl.disabled=true;
+  codeEl.style.borderColor="var(--mu)";
+  errEl.textContent="Checking…";
+  errEl.style.color="var(--mu)";
+
+  // Save current session before verifyOtp overwrites it
+  const {data:{session:origSession}}=await _sb.auth.getSession();
 
   // Verify OTP against old email
   const {error}=await _sb.auth.verifyOtp({
-    email:state.oldEmail,token:code,type:"email"
+    email:state.oldEmail,token:code,type:"magiclink"
   });
   if(error){
-    btn.disabled=false;btn.textContent="Verify";
-    errEl.textContent=error.message;return;
+    // Try type email as fallback
+    const {error:e2}=await _sb.auth.verifyOtp({
+      email:state.oldEmail,token:code,type:"email"
+    });
+    if(e2){
+      codeEl.disabled=false;
+      codeEl.style.borderColor="var(--red)";
+      codeEl.value="";
+      errEl.textContent=e2.message;
+      errEl.style.color="var(--red)";
+      return;
+    }
   }
 
-  // OTP verified — now change the email
+  // Restore original session so updateUser works correctly
+  if(origSession){
+    await _sb.auth.setSession({
+      access_token:origSession.access_token,
+      refresh_token:origSession.refresh_token
+    });
+  }
+
+  // Now change the email
   const {error:updateErr}=await _sb.auth.updateUser({email:state.newEmail});
-  btn.disabled=false;btn.textContent="Verify";
-  if(updateErr){errEl.textContent=updateErr.message;return;}
+  if(updateErr){
+    codeEl.disabled=false;
+    codeEl.style.borderColor="var(--red)";
+    errEl.textContent=updateErr.message;
+    errEl.style.color="var(--red)";
+    return;
+  }
 
   // Done
   _ceClear();
